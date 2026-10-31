@@ -11,13 +11,35 @@ brew tap fmu/homebrew https://github.com/fmu/homebrew.git
 brew trust fmu/homebrew
 ```
 
-Then install a formula by name:
+Then install the formulae you want:
 
 ```bash
-brew install gbrain-embed
+brew install gbrain          # the GBrain CLI
+brew install gbrain-embed    # on-demand local embeddings for gbrain
 ```
 
 ## Formulae
+
+### gbrain
+
+[GBrain](https://github.com/garrytan/gbrain) — Postgres-native personal
+knowledge brain with hybrid RAG search. The formula installs upstream's
+self-contained binary; it is not the unrelated npm `gbrain` package.
+
+```bash
+brew install gbrain
+gbrain init --pglite
+gbrain doctor
+```
+
+Upstream publishes binaries for macOS arm64 and Linux x86_64 only.
+
+The formula does not wrap or disable gbrain's own updater: `gbrain upgrade`
+replaces the binary in the Homebrew keg in place. A scheduled workflow
+([`bump-gbrain.yml`](.github/workflows/bump-gbrain.yml)) re-pins the formula to
+the latest upstream release every 30 minutes, so `brew update && brew upgrade
+gbrain` tracks upstream as well. In-place self-update needs a user-writable
+Homebrew prefix.
 
 ### gbrain-embed
 
@@ -32,8 +54,8 @@ brew install gbrain-embed
 ```
 
 The formula depends on `bun` and `llama.cpp` from Homebrew; there are no Nix
-dependencies. `gbrain` itself is not distributed here — install it separately
-and keep it on `PATH`.
+dependencies. It needs the `gbrain` CLI on `PATH`; install it from this same tap
+(`brew install gbrain`) or use your existing installation.
 
 Post-install, once:
 
@@ -43,8 +65,9 @@ gbrain-embed setup              # configure gbrain and backfill
 brew services start gbrain-embed
 ```
 
-`brew services` keeps `gbrain-embed serve` running at login; `gbrain-embed status`,
-`gbrain-embed mode throughput`, and `gbrain-embed bench` work against it. Upgrading (`brew upgrade gbrain-embed`) replaces the code but not the model
+`brew services` keeps `gbrain-embed serve` running at login; `gbrain-embed
+status`, `gbrain-embed mode throughput`, and `gbrain-embed bench` work against
+it. Upgrading (`brew upgrade gbrain-embed`) replaces the code but not the model
 or `~/.config/gbrain-embed/config.json`.
 
 Uninstall:
@@ -56,5 +79,7 @@ brew uninstall gbrain-embed
 
 ## Development
 
-Formulae are plain Ruby files under `Formula/`. CI audits and installs each
-formula on the latest macOS.
+Formulae are plain Ruby files under `Formula/`. CI audits, installs and tests
+each formula on the latest macOS. [`bump-gbrain.yml`](.github/workflows/bump-gbrain.yml)
+re-pins `gbrain` to the latest upstream release every 30 minutes and then
+re-runs CI for the pushed formula.

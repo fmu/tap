@@ -3,6 +3,7 @@ name: brew
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -18,8 +19,12 @@ jobs:
           brew tap fmu/homebrew "file://${GITHUB_WORKSPACE}"
           brew trust fmu/homebrew
       - name: Audit
-        run: brew audit --strict fmu/homebrew/gbrain-embed
-      - name: Install
+        run: brew audit --strict fmu/homebrew/gbrain-embed fmu/homebrew/gbrain
+      - name: Install gbrain-embed
         run: brew install --build-from-source fmu/homebrew/gbrain-embed
+      - name: Install gbrain
+        run: brew install fmu/homebrew/gbrain
       - name: Test
-        run: brew test fmu/homebrew/gbrain-embed
+        run: |
+          brew test fmu/homebrew/gbrain-embed
+          brew test fmu/homebrew/gbrain
