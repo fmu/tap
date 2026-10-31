@@ -7,7 +7,12 @@ on:
 
 jobs:
   test:
+    # macos-latest is Apple silicon, which every package here needs. The two
+    # Apple silicon/macOS 27 artifacts are handled conditionally below: Pared
+    # refuses to install on anything older, so a runner on macOS 26 must not
+    # even try.
     runs-on: macos-latest
+    timeout-minutes: 60
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
       HOMEBREW_NO_ENV_HINTS: 1
@@ -18,13 +23,57 @@ jobs:
         run: |
           brew tap fmu/homebrew "file://${GITHUB_WORKSPACE}"
           brew trust fmu/homebrew
-      - name: Audit
-        run: brew audit --strict fmu/homebrew/gbrain-embed fmu/homebrew/gbrain
-      - name: Install gbrain-embed
-        run: brew install --build-from-source fmu/homebrew/gbrain-embed
-      - name: Install gbrain
-        run: brew install fmu/homebrew/gbrain
+      - name: Audit formulae
+        run: |
+          brew audit --strict \
+            fmu/homebrew/gbrain \
+            fmu/homebrew/gbrain-embed \
+            fmu/homebrew/pared \
+            fmu/homebrew/ghidra@12.1
+      - name: Audit casks
+        run: |
+          brew audit --strict --cask \
+            fmu/homebrew/iqualize \
+            fmu/homebrew/mornye \
+            fmu/homebrew/mpv-app \
+            fmu/homebrew/pared-app
+      - name: Install formulae
+        run: |
+          brew install fmu/homebrew/gbrain-embed
+          brew install fmu/homebrew/gbrain
+          # Pared is macOS 27 only; installing it on an older runner fails by
+          # design, so only try where it can run.
+          if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
+            brew install fmu/homebrew/pared
+            echo "PARED_INSTALLED=1" >> "$GITHUB_ENV"
+          else
+            echo "skipping pared: needs macOS 27, runner is $(sw_vers -productVersion)"
+          fi
+      - name: Install casks
+        run: |
+          brew install --cask \
+            fmu/homebrew/iqualize \
+            fmu/homebrew/mornye \
+            fmu/homebrew/mpv-app
+          if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
+            brew install --cask fmu/homebrew/pared-app
+            echo "PARED_APP_INSTALLED=1" >> "$GITHUB_ENV"
+          else
+            echo "skipping pared-app: needs macOS 27, runner is $(sw_vers -productVersion)"
+          fi
       - name: Test
         run: |
           brew test fmu/homebrew/gbrain-embed
           brew test fmu/homebrew/gbrain
+          if [ "${PARED_INSTALLED:-}" = "1" ]; then
+            brew test fmu/homebrew/pared
+          fi
+      - name: Check the installed bundles
+        run: |
+          for app in iQualize.app Mornye.app mpv.app; do
+            test -d "/Applications/$app" || { echo "missing /Applications/$app" >&2; exit 1; }
+          done
+          if [ "${PARED_APP_INSTALLED:-}" = "1" ]; then
+            test -d /Applications/Pared.app || { echo "missing /Applications/Pared.app" >&2; exit 1; }
+          fi
+          command -v mpv
