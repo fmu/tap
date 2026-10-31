@@ -5,6 +5,10 @@ from the release tag, and every checksum is the SHA-256 of the release asset as
 downloaded from GitHub, so a missing or replaced asset fails the bump instead of
 pinning bytes nobody can fetch again.
 
+Output contract: stdout carries only pins that moved (`pkg: old -> new`) because
+the workflow commits it as the bump commit's body; a package that did not move
+reports `pkg: already at <version>` on stderr, for the job log only.
+
 Environment:
   RELEASE_TAG  pin this tag instead of asking for the latest release (used by
                the workflow's manual input; empty means look it up).
@@ -161,7 +165,13 @@ def replace_sha_after_url(text: str, url_fragment: str, sha256: str, where: str)
 
 
 def report(package: str, old: str, new: str) -> None:
+    """Report one package's pin.
+
+    Changed pins go to stdout, which the bump workflow commits as the commit
+    body. A package that did not move is only status for the job log, so it
+    goes to stderr and never reaches the commit message.
+    """
     if old == new:
-        print(f"{package}: already at {new}")
+        print(f"{package}: already at {new}", file=sys.stderr)
     else:
         print(f"{package}: {old} -> {new}")

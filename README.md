@@ -354,7 +354,9 @@ Homebrew-owned `pared` would shadow it.
 packages every 30 minutes. For each package, [`scripts/bump/`](scripts/bump/)
 resolves upstream's latest release tag, downloads the release asset(s), computes
 their SHA-256, rewrites the version and checksums, and — when something moved —
-commits, pushes and dispatches the macOS CI run.
+commits, pushes and dispatches the macOS CI run. The commit body lists only the
+packages that moved; a package that was already current is reported in the job
+log but left out of the commit message.
 
 | package | upstream | release tag |
 | --- | --- | --- |
