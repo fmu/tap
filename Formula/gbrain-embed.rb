@@ -1,0 +1,69 @@
+class GbrainEmbed < Formula
+  desc "On-demand local embeddings for gbrain, served by llama.cpp"
+  homepage "https://github.com/fmu/gbrain-embed"
+  url "https://github.com/fmu/gbrain-embed/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "2a881015167ffea9e8f0e793ee25500298267109b1f162a8031b57f8efc5c377"
+  head "https://github.com/fmu/gbrain-embed.git", branch: "main"
+
+  depends_on "bun"
+  depends_on "llama.cpp"
+
+  def install
+    libexec.install "src"
+    doc.install "README.md"
+
+    # The proxy spawns `llama-server` and the `gbrain` CLI directly, so point it
+    # at the Homebrew keg instead of the reference machine's /opt/homebrew path.
+    llama_server = Formula["llama.cpp"].opt_bin/"llama-server"
+    inreplace "src/config.ts", '"/opt/homebrew/bin/llama-server"', %("#{llama_server}")
+
+    (bin/"gbrain-embed").write <<~SH
+      #!/bin/bash
+      export PATH="#{Formula["llama.cpp"].opt_bin}:#{HOMEBREW_PREFIX}/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
+      exec "#{Formula["bun"].opt_bin}/bun" "#{opt_libexec}/src/cli.ts" "$@"
+    SH
+    chmod 0755, bin/"gbrain-embed"
+  end
+
+  service do
+    run [opt_bin/"gbrain-embed", "serve"]
+    keep_alive true
+    working_dir var
+    log_path var/"log/gbrain-embed.log"
+    error_log_path var/"log/gbrain-embed.log"
+  end
+
+  def caveats
+    <<~EOS
+      Install the embedding model once (3.3 GB, SHA-256 verified):
+
+        gbrain-embed model install
+
+      `gbrain` itself is not a Homebrew formula. Install it separately and keep
+      it on PATH; a global npm/bun install lands in #{HOMEBREW_PREFIX}/bin,
+      which the gbrain-embed wrapper already includes.
+
+      Then point gbrain at this service and run it at login:
+
+        gbrain-embed setup
+        brew services start gbrain-embed
+    EOS
+  end
+
+  test do
+    assert_match "Usage:", shell_output("#{bin}/gbrain-embed --help")
+
+    (testpath/"config.json").write <<~JSON
+      {
+        "listenPort": 0,
+        "upstreamPort": 9,
+        "stateDir": "#{testpath}/state"
+      }
+    JSON
+    ENV["GBRAIN_EMBED_CONFIG"] = testpath/"config.json"
+
+    output = shell_output("#{bin}/gbrain-embed status --json")
+    assert_match '"ok": false', output
+    assert_match '"state": "stopped"', output
+  end
+end

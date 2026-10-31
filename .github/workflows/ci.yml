@@ -1,0 +1,20 @@
+name: brew
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - name: Tap this checkout
+        run: brew tap fmu/homebrew "file://${GITHUB_WORKSPACE}"
+      - name: Audit
+        run: brew audit --strict fmu/homebrew/gbrain-embed
+      - name: Install
+        run: brew install --build-from-source fmu/homebrew/gbrain-embed
+      - name: Test
+        run: brew test fmu/homebrew/gbrain-embed
