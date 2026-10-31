@@ -2,7 +2,9 @@
 
 Homebrew formulae and casks for [fmu](https://github.com/fmu)'s tools, plus a
 few apps that homebrew-cask cannot carry. Most packages are re-pinned to
-upstream's latest release automatically; see [Upstream bumps](#upstream-bumps).
+upstream's latest release automatically; the reverse-engineering toolchain is
+pinned to the versions [REA](https://github.com/morluto/rea) verifies. See
+[Upstream bumps](#upstream-bumps).
 
 ```bash
 # This tap is a multi-formula repository named `homebrew`, so Homebrew cannot
@@ -16,11 +18,133 @@ brew trust fmu/homebrew
 Then install what you want:
 
 ```bash
+brew install rea          # the reverse-engineering MCP server and CLI
+brew install ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
 brew install gbrain gbrain-embed
 brew install --cask iqualize mornye mpv-app
 ```
 
 ## Formulae
+
+### rea
+
+[REA](https://github.com/morluto/rea) is one CLI and MCP server that reverse
+engineers native, managed, Android and JavaScript targets and keeps the
+Evidence of each engine separate. This formula installs the published
+`rea-agents` npm package — the same artifact the upstream installer and the
+agent plugins use — so `rea doctor`, `rea setup` and `rea mcp` behave exactly
+as documented upstream.
+
+```bash
+brew install rea
+rea doctor --json
+rea setup                       # register agent clients
+```
+
+REA is the reference for the rest of the toolchain: each release verifies one
+exact release of its engines and reports every other release as unverified, so
+the tap pins them together with REA instead of tracking each upstream latest:
+
+| package | pinned | REA source of truth |
+| --- | --- | --- |
+| `jadx-headless-mcp` | 0.7.1 | `src/android/JadxRelease.ts` |
+| `kuna` | 1.833 | `src/kuna/KunaRelease.ts` |
+| `ghidra@12.1` | 12.1.4 | `src/ghidra/GhidraReleasePolicy.ts` |
+
+The formula depends on all three, plus `node` and `openjdk`. `rea` finds its
+engines through environment variables; set them once (the caveats print the
+same block) and `rea setup` copies the detected values into the agent
+registrations it writes:
+
+```bash
+export GHIDRA_INSTALL_DIR="$(brew --prefix ghidra@12.1)/libexec"
+export REA_KUNA_COMMAND="$(brew --prefix kuna)/bin/kuna"
+export REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp)/libexec/jadx-headless-mcp.jar"
+```
+
+Hopper is an optional provider and ships as a cask in homebrew-cask:
+
+```bash
+brew install --cask hopper-disassembler
+```
+
+Rizin is the other optional integration this tap can supply
+(`brew install rizin`, then `REA_RIZIN_COMMAND`); gdb, objdump, apktool,
+binwalk, tshark, WABT, sigrok, mitmdump, IDA, JEB and Cutter are detected from
+`PATH` or their own `REA_*` setting and are not dependencies. `rea doctor
+--json` lists each integration with its setting.
+
+Java note: `ghidra@12.1` brings the `openjdk@21` that REA's Ghidra bridge is
+verified against, while `openjdk` (latest) serves the JADX bridge. REA picks a
+JDK from `JAVA_HOME`, then `PATH`, then Homebrew's `opt/openjdk`; if doctor
+complains, export `JAVA_HOME` for `openjdk@21` before `rea setup`.
+
+### jadx-headless-mcp
+
+[`jadx-headless-mcp`](https://github.com/1013503897/jadx-headless-mcp) exposes
+JADX's `jadx-core` as a stdio MCP server for Android APK analysis, with no GUI.
+REA drives it through `REA_JADX_MCP_JAR`, so the formula installs the release
+fat JAR at a stable path:
+
+```bash
+brew install jadx-headless-mcp
+# REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp)/libexec/jadx-headless-mcp.jar"
+```
+
+The version is pinned to the one REA verifies (upstream is ahead); it is bumped
+by `scripts/bump/rea.py` together with REA.
+
+### kuna
+
+[Kuna](https://github.com/Noelo-Lab/kuna) is an agent-first decompiler
+distributed as one self-contained executable. REA drives it through
+`REA_KUNA_COMMAND`:
+
+```bash
+brew install kuna
+# REA_KUNA_COMMAND="$(brew --prefix kuna)/bin/kuna"
+```
+
+The version is pinned to the one REA verifies (upstream is ahead); it is bumped
+by `scripts/bump/rea.py` together with REA.
+
+### ghidra-mcp
+
+[`GhidraMCP`](https://github.com/LaurieWired/GhidraMCP) is a standalone Ghidra
+MCP server: a Ghidra extension that serves the open program over loopback HTTP,
+plus a Python `ghidra-mcp` MCP server that clients launch. It is independent of
+REA, which has its own Ghidra bridge.
+
+```bash
+brew install ghidra-mcp
+```
+
+The formula installs the Ghidra extension built for the pinned `ghidra@12.1`
+keg, but Homebrew cannot register Ghidra extensions. Register it once, after
+Ghidra has been started at least once (it creates
+`~/.ghidra/.ghidra_12.1.4_PUBLIC`), using either route:
+
+- Ghidra: File > Install Extensions > "+" > select the extension zip in
+  `$(brew --prefix ghidra-mcp)/libexec`, or
+- `unzip -d ~/.ghidra/.ghidra_12.1.4_PUBLIC/Extensions <that zip>`
+
+Restart Ghidra, enable `GhidraMCPPlugin` under File > Configure > Developer,
+then add the server to your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "ghidra": {
+      "command": "/opt/homebrew/opt/ghidra-mcp/bin/ghidra-mcp",
+      "args": ["--ghidra-server", "http://127.0.0.1:8080/"]
+    }
+  }
+}
+```
+
+A release whose extension was built for a different Ghidra version is not
+pinned: `scripts/bump/ghidra-mcp.py` only accepts releases that match the
+`ghidra@12.1` keg.
 
 ### gbrain
 
@@ -113,10 +237,10 @@ that cannot start.
 ### ghidra@12.1
 
 Ghidra 12.1.4, pinned. Homebrew core has moved on to 12.2; this keg stays on
-12.1.4 for extensions that are built against that exact release, because
-Ghidra's extension loader does not reject a version mismatch at startup — an
-API move only shows up later as a `NoClassDefFoundError` inside the affected
-tool.
+12.1.4 because both consumers need that exact release: REA verifies its Ghidra
+bridge against 12.1.4, and GhidraMCP publishes one extension per Ghidra release.
+A mismatch is not rejected by Ghidra's extension loader at startup — an API move
+only shows up later as a `NoClassDefFoundError` inside the affected tool.
 
 ```bash
 brew install fmu/homebrew/ghidra@12.1
@@ -127,11 +251,13 @@ owning `/opt/homebrew/bin/ghidraRun`. The public release archive ships native
 components for Windows and Linux only, so the formula also compiles the macOS
 native components (the decompiler, Sleigh and the demangler) with the archive's
 documented `support/gradle/gradlew buildNatives` run. That needs the formula's
-JDK 21 and network access for the Gradle wrapper's first download.
+JDK 21 and network access for the Gradle wrapper's first download. `rea` and
+`ghidra-mcp` depend on this keg, so installing either builds it.
 
-This is the one package the scheduled bump does not touch: the pin is the point.
-Bump it by hand, together with the tooling that is built against the same
-Ghidra version.
+The scheduled bump does not touch this formula: the pin is the point. It moves
+when REA verifies a new Ghidra release (and GhidraMCP ships an extension for
+it), which is a hand change; `scripts/bump/rea.py` fails rather than publishing
+a tap whose REA and Ghidra pins disagree.
 
 ## Casks
 
@@ -205,19 +331,39 @@ commits, pushes and dispatches the macOS CI run.
 
 | package | upstream | release tag |
 | --- | --- | --- |
+| `rea` (+ `jadx-headless-mcp`, `kuna`) | `morluto/rea` | `rea-agents-<version>` |
+| `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
 | `pared` + `pared-app` | `4evy/pared` | no `v` prefix |
 
-`ghidra@12.1` is deliberately excluded (see above), and `gbrain-embed` follows
-a hand-made tag of `fmu/gbrain-embed` rather than a GitHub release.
+Two packages are coupled rather than independent:
+
+- `rea` is the authority for the engine versions. `scripts/bump/rea.py` pins the
+  `rea-agents` npm tarball and reads the engine releases the new tag verifies
+  from its source (`src/android/JadxRelease.ts`, `src/kuna/KunaRelease.ts`,
+  `src/ghidra/GhidraReleasePolicy.ts`), then re-pins `Formula/rea.rb`,
+  `Formula/jadx-headless-mcp.rb` and `Formula/kuna.rb` in one commit. A Ghidra
+  move also needs a new `ghidra@12.1` keg and a GhidraMCP extension built for
+  that release, so the script fails instead of writing a tap whose pins disagree.
+- `ghidra-mcp` only accepts a release whose extension targets the Ghidra keg the
+  tap pins; it never creates a mismatched extension.
+
+`ghidra@12.1` is deliberately absent from the table (see above), and
+`gbrain-embed` follows a hand-made tag of `fmu/gbrain-embed` rather than a
+GitHub release.
+
+CI also runs `python3 scripts/bump/rea.py --check`, which compares the tap's
+engine pins with the releases the pinned REA version verifies and exits non-zero
+on drift without touching the npm registry.
 
 A manual run can pin a specific tag for one package:
 
 ```bash
 gh workflow run bump-upstream.yml -f package=mornye -f tag=v5.2.6
+gh workflow run bump-upstream.yml -f package=rea -f tag=rea-agents-6.8.0
 ```
 
 Bump scripts can also be run locally; they need only `python3` and, for the
@@ -226,15 +372,18 @@ GitHub API, an optional `GH_TOKEN`:
 ```bash
 python3 scripts/bump/mornye.py            # latest upstream release
 RELEASE_TAG=v5.2.6 python3 scripts/bump/mornye.py   # a specific tag
+python3 scripts/bump/rea.py --check       # verify the engine pin matrix
 ```
 
 ## Development
 
 Formulae are under `Formula/` and casks under `Casks/`; both are plain Ruby
 files. [`ci.yml`](.github/workflows/ci.yml) audits every formula and cask on the
-latest macOS, installs the packages the runner can run, and runs the formula
-tests. The two Apple silicon/macOS 27 artifacts are only installed when the
-runner is new enough.
+latest macOS, installs the packages the runner can run, runs the formula tests,
+and checks that the engine pins match the pinned REA release. The two Apple
+silicon/macOS 27 artifacts are only installed when the runner is new enough; the
+reverse-engineering toolchain is installed on every run, which builds
+`ghidra@12.1`'s macOS native components and therefore dominates the job time.
 
 `audit_exceptions/mismatched_binary_allowlist.json` records the one x86_64
 Mach-O helper that Ghidra's own archive carries. It only matters when the keg is
@@ -249,7 +398,9 @@ installed):
 brew tap fmu/audit "file://$PWD"   # the tap is named fmu/audit
 brew trust fmu/audit
 brew audit --strict fmu/audit/gbrain fmu/audit/gbrain-embed \
-  fmu/audit/pared fmu/audit/ghidra@12.1
+  fmu/audit/pared fmu/audit/ghidra@12.1 \
+  fmu/audit/jadx-headless-mcp fmu/audit/kuna \
+  fmu/audit/ghidra-mcp fmu/audit/rea
 brew audit --strict --cask fmu/audit/iqualize fmu/audit/mornye \
   fmu/audit/mpv-app fmu/audit/pared-app
 brew untap fmu/audit

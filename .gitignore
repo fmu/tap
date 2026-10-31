@@ -7,3 +7,6 @@ __pycache__/
 # into the checkout.
 .brew-cache/
 .brew-tmp/
+
+# Scratch caches for local tool runs (npm, pip, Homebrew) inside the checkout.
+.tmp/

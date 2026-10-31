@@ -75,9 +75,8 @@ def version_from_tag(tag: str) -> str:
     return tag[1:] if tag.startswith("v") else tag
 
 
-def asset_sha256(repo: str, tag: str, asset: str) -> str:
-    """Hash a release asset by streaming it, so large assets stay out of memory."""
-    url = f"https://github.com/{repo}/releases/download/{tag}/{asset}"
+def download_sha256(url: str) -> str:
+    """Hash any asset URL by streaming it, so large files stay out of memory."""
     for attempt in range(1, 4):
         digest = hashlib.sha256()
         try:
@@ -90,6 +89,28 @@ def asset_sha256(repo: str, tag: str, asset: str) -> str:
             if attempt == 3:
                 fail(f"could not download {url}: {exc}")
             time.sleep(5 * attempt)
+    raise AssertionError("unreachable")
+
+
+def asset_sha256(repo: str, tag: str, asset: str) -> str:
+    """Hash a GitHub release asset by streaming it."""
+    return download_sha256(f"https://github.com/{repo}/releases/download/{tag}/{asset}")
+
+
+def raw_file(repo: str, tag: str, path: str) -> str:
+    """Read one file from a repository tag.
+
+    Used to read the exact engine pins a published release verifies, so the
+    tap follows the released tag rather than whatever upstream's main branch
+    says today.
+    """
+    url = f"https://raw.githubusercontent.com/{repo}/{tag}/{path}"
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.URLError as exc:
+        fail(f"could not read {url}: {exc}")
     raise AssertionError("unreachable")
 
 

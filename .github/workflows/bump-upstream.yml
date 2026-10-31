@@ -4,9 +4,20 @@ name: bump upstream
 # the release tag and every sha256 is computed from the downloaded release asset;
 # `scripts/bump/` holds one script per package.
 #
+# Two packages are coupled rather than independent:
+#
+#   rea        `scripts/bump/rea.py` pins the rea-agents npm tarball AND the
+#              engine releases that REA verifies (jadx-headless-mcp, kuna, and
+#              the Ghidra pin it shares with ghidra@12.1). REA is the authority
+#              for those pins, so they are never bumped on their own.
+#   ghidra-mcp `scripts/bump/ghidra-mcp.py` only accepts a release whose Ghidra
+#              extension was built for the Ghidra keg the tap pins.
+#
 # Formula/ghidra@12.1.rb is deliberately absent: it is pinned to one Ghidra
 # release for extensions built against that exact version, so it is bumped by
-# hand together with the tooling that depends on it.
+# hand together with the tooling that depends on it. `scripts/bump/rea.py`
+# fails the run when REA starts verifying a different Ghidra release instead of
+# silently publishing a tap whose packages disagree.
 on:
   schedule:
     # Upstream releases at its own pace; a cheap API poll every 30 minutes is
@@ -15,11 +26,11 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, gbrain, iqualize, mornye, mpv-app or pared"
+        description: "Package to bump: all, gbrain, ghidra-mcp, iqualize, mornye, mpv-app, pared or rea"
         required: false
         default: "all"
       tag:
-        description: "Upstream release tag to pin (single package only); empty means latest"
+        description: "Upstream release tag to pin (single package only; for rea use rea-agents-<version>); empty means latest"
         required: false
         default: ""
 
@@ -49,6 +60,22 @@ jobs:
             echo "a tag override needs a single package, not 'all'" >&2
             exit 1
           fi
+
+      # Run these two first: rea decides the engine pins, and ghidra-mcp checks
+      # its extension against the Ghidra keg that rea's pin keeps in place. A
+      # failed coupling check therefore stops the run before any other package
+      # has been re-pinned.
+      - name: Bump rea (with the engines it verifies)
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'rea'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/rea.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump ghidra-mcp
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'ghidra-mcp'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/ghidra-mcp.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump gbrain
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'gbrain'
