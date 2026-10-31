@@ -1,0 +1,9 @@
+# Python bytecode from running scripts/bump locally (the workflow commits with
+# `git add -A`, so this must never show up as a change).
+__pycache__/
+*.pyc
+
+# Local `brew style`/audit runs with HOMEBREW_CACHE/HOMEBREW_TEMP redirected
+# into the checkout.
+.brew-cache/
+.brew-tmp/
