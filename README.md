@@ -44,11 +44,14 @@ prefix.
 
 ### gbrain-embed
 
-On-demand local embeddings for [gbrain](https://github.com/garrytan/gbrain),
-served by [llama.cpp](https://github.com/ggml-org/llama.cpp). It runs a loopback
-OpenAI-compatible endpoint, starts `llama-server` on the first embedding
-request, and stops it again after an idle window, so the model is resident only
-while it is in use.
+On-demand local embeddings and reranking for
+[gbrain](https://github.com/garrytan/gbrain), served by
+[llama.cpp](https://github.com/ggml-org/llama.cpp). It runs one loopback
+OpenAI-compatible endpoint that fronts two independent `llama-server`
+processes: the embedding model, started on the first embedding request, and
+the Qwen3-Reranker-0.6B cross-encoder, started on the first rerank request.
+Each one stops again after its own idle window, so either model is resident
+only while it is in use and unloading one never disturbs the other.
 
 ```bash
 brew install gbrain-embed
@@ -61,15 +64,24 @@ dependencies. It needs the `gbrain` CLI on `PATH`; install it from this same tap
 Post-install, once:
 
 ```bash
-gbrain-embed model install      # 3.3 GB GGUF, SHA-256 verified
-gbrain-embed setup              # configure gbrain and backfill
+gbrain-embed model install      # both GGUFs: ~3.3 GB embedding + ~0.6 GB reranker
+gbrain-embed setup              # configure gbrain (embeddings + reranker) and backfill
 brew services start gbrain-embed
 ```
 
+`model install reranker` installs just the reranker; `model install embedding`
+just the embedder. The files live under
+`~/.local/share/gbrain-embed/models` by default and are shared by `gbrain
+serve`. Both are SHA-256 pinned: the reranker uses the llama.cpp maintainers'
+Q8_0 conversion (`ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF`), because the
+community quantized conversions drop the classifier tensor that makes the
+scores meaningful.
+
 `brew services` keeps `gbrain-embed serve` running at login; `gbrain-embed
 status`, `gbrain-embed mode throughput`, and `gbrain-embed bench` work against
-it. Upgrading (`brew upgrade gbrain-embed`) replaces the code but not the model
-or `~/.config/gbrain-embed/config.json`.
+it (`bench --model reranker` measures the reranker alone). Upgrading
+(`brew upgrade gbrain-embed`) replaces the code but not the models or
+`~/.config/gbrain-embed/config.json`.
 
 Uninstall:
 
@@ -80,7 +92,8 @@ brew uninstall gbrain-embed
 
 The formula tracks the tagged source release of
 [fmu/gbrain-embed](https://github.com/fmu/gbrain-embed) and is bumped by hand
-when that repository is tagged.
+when that repository is tagged. The current pin is `v0.2.0` (the release that
+adds the reranker).
 
 ### pared
 

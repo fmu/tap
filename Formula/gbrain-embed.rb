@@ -1,8 +1,7 @@
 class GbrainEmbed < Formula
-  desc "On-demand local embeddings for gbrain, served by llama.cpp"
+  desc "On-demand local embeddings and reranking for gbrain, served by llama.cpp"
   homepage "https://github.com/fmu/gbrain-embed"
-  url "https://github.com/fmu/gbrain-embed/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "2a881015167ffea9e8f0e793ee25500298267109b1f162a8031b57f8efc5c377"
+  url "https://github.com/fmu/gbrain-embed.git", tag: "v0.2.0"
   head "https://github.com/fmu/gbrain-embed.git", branch: "main"
 
   depends_on "bun"
@@ -50,12 +49,18 @@ class GbrainEmbed < Formula
 
   def caveats
     <<~EOS
-      Install the embedding model once (3.3 GB, SHA-256 verified):
+      Install the models once (embedding ~3.3 GB, reranker ~0.6 GB, both
+      SHA-256 verified):
 
-        gbrain-embed model install
+        gbrain-embed model install               # both models
+        gbrain-embed model install reranker      # reranker only (optional)
 
-      It lives under ~/.local/share/gbrain-embed/models by default and is
-      shared by `gbrain serve`.
+      They live under ~/.local/share/gbrain-embed/models by default and are
+      shared by `gbrain serve`. The proxy starts each model on first use and
+      unloads it after its own idle window: the embedding server follows the
+      active mode's TTL, the reranker has its own reranker.ttlSeconds. The two
+      processes are independent, so one being resident never keeps the other
+      loaded.
 
       `gbrain` itself is not a Homebrew formula. Install it separately and keep
       it on PATH; a global npm/bun install lands in #{HOMEBREW_PREFIX}/bin,
@@ -65,11 +70,15 @@ class GbrainEmbed < Formula
 
         gbrain-embed setup
         brew services start gbrain-embed
+
+      `setup` configures both the embedding and reranker provider URLs against
+      the same loopback endpoint (#{HOMEBREW_PREFIX} installs both models).
     EOS
   end
 
   test do
     assert_match "Usage:", shell_output("#{bin}/gbrain-embed --help")
+    assert_match "reranker", shell_output("#{bin}/gbrain-embed --help")
 
     (testpath/"config.json").write <<~JSON
       {
@@ -83,5 +92,6 @@ class GbrainEmbed < Formula
     output = shell_output("#{bin}/gbrain-embed status --json")
     assert_match '"ok": false', output
     assert_match '"state": "stopped"', output
+    assert_match '"reranker"', output
   end
 end
