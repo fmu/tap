@@ -6,6 +6,9 @@ Homebrew formulae for [fmu](https://github.com/fmu)'s tools.
 # This tap is a multi-formula repository named `homebrew`, so Homebrew cannot
 # derive its URL from `user/repo`; pass the URL explicitly (one time).
 brew tap fmu/homebrew https://github.com/fmu/homebrew.git
+
+# Homebrew 5+ keeps third-party taps untrusted until they are named.
+brew trust fmu/homebrew
 ```
 
 Then install a formula by name:

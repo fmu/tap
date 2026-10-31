@@ -7,11 +7,16 @@ on:
 jobs:
   test:
     runs-on: macos-latest
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_ENV_HINTS: 1
     steps:
       - uses: actions/checkout@v4
-      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: Homebrew/actions/setup-homebrew@main
       - name: Tap this checkout
-        run: brew tap fmu/homebrew "file://${GITHUB_WORKSPACE}"
+        run: |
+          brew tap fmu/homebrew "file://${GITHUB_WORKSPACE}"
+          brew trust fmu/homebrew
       - name: Audit
         run: brew audit --strict fmu/homebrew/gbrain-embed
       - name: Install

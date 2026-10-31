@@ -39,6 +39,9 @@ class GbrainEmbed < Formula
 
         gbrain-embed model install
 
+      It lives under ~/.local/share/gbrain-embed/models by default and is
+      shared by `gbrain serve`.
+
       `gbrain` itself is not a Homebrew formula. Install it separately and keep
       it on PATH; a global npm/bun install lands in #{HOMEBREW_PREFIX}/bin,
       which the gbrain-embed wrapper already includes.
