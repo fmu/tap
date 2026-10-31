@@ -220,12 +220,21 @@ latest macOS, installs the packages the runner can run, and runs the formula
 tests. The two Apple silicon/macOS 27 artifacts are only installed when the
 runner is new enough.
 
-To validate a change locally before pushing:
+`audit_exceptions/mismatched_binary_allowlist.json` records the one x86_64
+Mach-O helper that Ghidra's own archive carries. It only matters when the keg is
+installed locally: audit inspects the installed cellar, and the CI runner audits
+before installing.
+
+To validate a change locally before pushing, tap the checkout under a throwaway
+name (Homebrew refuses a second tap named `fmu/homebrew` while the real one is
+installed):
 
 ```bash
-brew tap fmu/homebrew file://"$PWD"
-brew audit --strict fmu/homebrew/gbrain fmu/homebrew/gbrain-embed \
-  fmu/homebrew/pared fmu/homebrew/ghidra@12.1
-brew audit --strict --cask fmu/homebrew/iqualize fmu/homebrew/mornye \
-  fmu/homebrew/mpv-app fmu/homebrew/pared-app
+brew tap fmu/audit "file://$PWD"   # the tap is named fmu/audit
+brew trust fmu/audit
+brew audit --strict fmu/audit/gbrain fmu/audit/gbrain-embed \
+  fmu/audit/pared fmu/audit/ghidra@12.1
+brew audit --strict --cask fmu/audit/iqualize fmu/audit/mornye \
+  fmu/audit/mpv-app fmu/audit/pared-app
+brew untap fmu/audit
 ```

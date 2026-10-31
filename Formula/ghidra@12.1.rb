@@ -13,6 +13,13 @@
 # supplies the Java tree as-is; only the macOS native components have to be
 # compiled here (see `install`), so a build is a download, an unpack and a short
 # Gradle run.
+#
+# The archive also carries one x86_64 Mach-O helper of its own,
+# Features/FileFormats/data/sevenzipnativelibs/Mac-x86_64/lib7-Zip-JBinding.dylib.
+# Homebrew's audit flags that as a non-native binary on Apple silicon, but it is
+# upstream's 7-Zip binding rather than something this build produced, so
+# audit_exceptions/mismatched_binary_allowlist.json records it; removing it would
+# silently drop 7-Zip archive support.
 class GhidraAT121 < Formula
   desc "Software reverse engineering framework (pinned for older extensions)"
   homepage "https://ghidra-sre.org/"

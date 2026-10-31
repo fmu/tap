@@ -1,0 +1,5 @@
+{
+  "ghidra@12.1": [
+    "libexec/Ghidra/Features/FileFormats/data/sevenzipnativelibs/Mac-x86_64/lib7-Zip-JBinding.dylib"
+  ]
+}
