@@ -148,7 +148,10 @@ how to approve it once.
 
 The app ships its own updater (`auto_updates true`), so `brew upgrade` defers to
 it, and downloads its music to `~/Downloads/Mornye` — user data that `zap`
-leaves alone.
+leaves alone. The cask also seeds the community extension registry
+([`mornyeapp/Mornye-Extension`](https://github.com/mornyeapp/Mornye-Extension))
+into the app's preferences on install and upgrade, so Settings > Extensions >
+Repo lists it without the URL being typed in by hand.
 
 ### mpv-app
 

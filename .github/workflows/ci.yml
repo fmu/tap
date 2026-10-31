@@ -68,6 +68,14 @@ jobs:
           if [ "${PARED_INSTALLED:-}" = "1" ]; then
             brew test fmu/homebrew/pared
           fi
+      - name: Check Mornye's extension registry default
+        run: |
+          registry="$(defaults read com.zarz.mornye flutter.store_registry_url)"
+          expected="https://raw.githubusercontent.com/mornyeapp/Mornye-Extension/main/registry.json"
+          if [ "$registry" != "$expected" ]; then
+            echo "Mornye registry is '$registry', expected '$expected'" >&2
+            exit 1
+          fi
       - name: Check the installed bundles
         run: |
           for app in iQualize.app Mornye.app mpv.app; do

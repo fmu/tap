@@ -27,6 +27,26 @@ cask "mornye" do
 
   app "Mornye.app"
 
+  # Mornye ships no extension-store URL, so a fresh install would otherwise need
+  # the registry typed by hand on Settings > Extensions > Repo. Seed the
+  # community registry (a `registry.json` index of `.sflx` packages) instead, on
+  # install and on every upgrade.
+  #
+  # `postflight_steps` runs sandboxed with HOME pointing at a temporary
+  # directory, and its declarative DSL interpolates its own tokens, not
+  # `Dir.home`. `{{user}}` expands to the account name, so the preferences path
+  # is spelled from it and the cask allows writes only to that directory.
+  # Writing the domain by path also avoids the cfprefsd lookup the sandbox
+  # denies; the value is readable as `defaults read com.zarz.mornye
+  # flutter.store_registry_url` afterwards.
+  postflight_steps do
+    run "/usr/bin/defaults",
+        args:           ["write", "/Users/{{user}}/Library/Preferences/com.zarz.mornye",
+                         "flutter.store_registry_url", "-string",
+                         "https://raw.githubusercontent.com/mornyeapp/Mornye-Extension/main/registry.json"],
+        writable_paths: ["/Users/{{user}}/Library/Preferences"]
+  end
+
   # The DMG holds only Mornye.app and an /Applications symlink; there is no pkg,
   # helper, daemon or login item, so no `uninstall pkgutil:`/`launchctl` stanza.
 
