@@ -11,7 +11,8 @@ jobs:
     # Apple silicon/macOS 27 artifacts are handled conditionally below: Pared
     # refuses to install on anything older, so a runner on macOS 26 must not
     # even try. REA pulls ghidra@12.1, whose macOS native components are built
-    # from source here, so this job needs the longer timeout.
+    # from source here, and designcraft-cli compiles the DesignCraft engine from
+    # source, so this job needs the longer timeout.
     runs-on: macos-latest
     timeout-minutes: 120
     env:
@@ -34,6 +35,7 @@ jobs:
           brew audit --strict \
             fmu/homebrew/gbrain \
             fmu/homebrew/gbrain-embed \
+            fmu/homebrew/designcraft-cli \
             fmu/homebrew/pared \
             fmu/homebrew/ghidra@12.1 \
             fmu/homebrew/jadx-headless-mcp \
@@ -51,6 +53,8 @@ jobs:
         run: |
           brew install fmu/homebrew/gbrain-embed
           brew install fmu/homebrew/gbrain
+          # Builds the DesignCraft engine from source with the rust formula.
+          brew install fmu/homebrew/designcraft-cli
           # Pared is macOS 27 only; installing it on an older runner fails by
           # design, so only try where it can run.
           if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
@@ -83,6 +87,7 @@ jobs:
         run: |
           brew test fmu/homebrew/gbrain-embed
           brew test fmu/homebrew/gbrain
+          brew test fmu/homebrew/designcraft-cli
           brew test fmu/homebrew/kuna
           brew test fmu/homebrew/jadx-headless-mcp
           brew test fmu/homebrew/ghidra-mcp

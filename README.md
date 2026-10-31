@@ -21,6 +21,7 @@ Then install what you want:
 brew install rea          # the reverse-engineering MCP server and CLI
 brew install ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
 brew install gbrain gbrain-embed
+brew install designcraft-cli  # the headless DesignCraft engine (matches the app cask)
 brew install --cask iqualize mornye mpv-app
 ```
 
@@ -219,6 +220,32 @@ The formula tracks the tagged source release of
 when that repository is tagged. The current pin is `v0.2.0` (the release that
 adds the reranker).
 
+### designcraft-cli
+
+The headless half of [DesignCraft](https://getartcraft.com/apps/designcraft),
+the page-layout app that is the `designcraft` cask in homebrew-cask. Like
+homebrew-core's `photocraft-cli`, the formula builds the CLI from the app's
+tagged source with Rust, so it runs the app's own layout composer, renderer and
+exporter without a window:
+
+```bash
+brew install designcraft-cli
+designcraft-cli --version
+designcraft-cli commands footnote                       # commands whose id/label/menu match
+designcraft-cli run --sample --export page.png          # render a page of the built-in sample
+designcraft-cli script page.dcs --export page.pdf       # batch-edit then export
+designcraft-cli mcp                                     # MCP server over stdio
+```
+
+The CLI and the app are built from one upstream tag: the formula was added at
+`0.15.2`, the version the `designcraft` cask is on, and the scheduled bump moves
+it to the latest upstream release — the same release homebrew-cask's autobump
+puts the app on. The build takes a few minutes on the first install. A source
+build does not embed the optional extra fonts from
+[`storytold/craft-fonts`](https://github.com/storytold/craft-fonts) the way the
+release binaries do; Latin text is unaffected, and other scripts fall back to
+the system fonts.
+
 ### pared
 
 The CLI half of [Pared](https://github.com/4evy/pared); the app is the
@@ -334,6 +361,7 @@ commits, pushes and dispatches the macOS CI run.
 | `rea` (+ `jadx-headless-mcp`, `kuna`) | `morluto/rea` | `rea-agents-<version>` |
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
+| `designcraft-cli` | `storytold/designcraft` | `v*` (the tag the `designcraft` cask is on) |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
