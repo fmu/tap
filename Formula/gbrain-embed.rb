@@ -1,7 +1,7 @@
 class GbrainEmbed < Formula
   desc "On-demand local embeddings and reranking for gbrain, served by llama.cpp"
   homepage "https://github.com/fmu/gbrain-embed"
-  url "https://github.com/fmu/gbrain-embed.git", tag: "v0.2.0"
+  url "https://github.com/fmu/gbrain-embed.git", tag: "v0.2.0", revision: "8d80c6e25535e898ab97b551f28779f6b0db4810"
   head "https://github.com/fmu/gbrain-embed.git", branch: "main"
 
   depends_on "bun"
