@@ -1,0 +1,115 @@
+name: bump upstream
+
+# Re-pin the tap's packages to upstream's latest release. The version comes from
+# the release tag and every sha256 is computed from the downloaded release asset;
+# `scripts/bump/` holds one script per package.
+#
+# Formula/ghidra@12.1.rb is deliberately absent: it is pinned to one Ghidra
+# release for extensions built against that exact version, so it is bumped by
+# hand together with the tooling that depends on it.
+on:
+  schedule:
+    # Upstream releases at its own pace; a cheap API poll every 30 minutes is
+    # enough, and assets are only downloaded once a version has moved.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to bump: all, gbrain, iqualize, mornye, mpv-app or pared"
+        required: false
+        default: "all"
+      tag:
+        description: "Upstream release tag to pin (single package only); empty means latest"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: bump-upstream
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Require a single package for a tag override
+        if: inputs.tag != ''
+        run: |
+          if [ "${{ inputs.package }}" = "all" ]; then
+            echo "a tag override needs a single package, not 'all'" >&2
+            exit 1
+          fi
+
+      - name: Bump gbrain
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'gbrain'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/gbrain.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump iqualize
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'iqualize'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/iqualize.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump mornye
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'mornye'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/mornye.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump mpv-app
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'mpv-app'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/mpv-app.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump pared
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'pared'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/pared.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          packages="$(git diff --cached --name-only \
+            | sed -e 's|.*/||' -e 's/\.rb$//' \
+            | paste -sd, - | sed 's/,/, /g')"
+          {
+            echo "upstream: bump ${packages}"
+            echo
+            cat "$RUNNER_TEMP/bumped.txt"
+          } > "$RUNNER_TEMP/message"
+          git commit -F "$RUNNER_TEMP/message"
+          git pull --rebase origin main
+          git push origin main
+
+      # A push made with the default token does not start other workflows, so
+      # ask for the macOS validation explicitly.
+      - name: Validate on macOS
+        if: steps.changes.outputs.changed == 'true'
+        run: gh workflow run ci.yml --ref main --repo "$GITHUB_REPOSITORY"
