@@ -16,6 +16,16 @@ class GbrainEmbed < Formula
     llama_server = formula_opt_bin("llama.cpp")/"llama-server"
     inreplace "src/config.ts", '"/opt/homebrew/bin/llama-server"', %Q("#{llama_server}")
 
+    # Do not let the Homebrew install silently pick up a Nix-managed gbrain;
+    # resolve it from PATH, where Homebrew's own bin directory comes first.
+    inreplace "src/config.ts",
+              /function defaultGbrainBin\(\): string \{\n\s*const nixProfile = join\(home, "\.nix-profile\/bin\/gbrain"\);\n\s*return existsSync\(nixProfile\) \? nixProfile : "gbrain";\n\}/,
+              <<~TS.chomp
+                function defaultGbrainBin(): string {
+                  return "gbrain";
+                }
+              TS
+
     libexec.install "src"
     doc.install "README.md"
 
