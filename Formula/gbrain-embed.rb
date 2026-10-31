@@ -18,13 +18,16 @@ class GbrainEmbed < Formula
 
     # Do not let the Homebrew install silently pick up a Nix-managed gbrain;
     # resolve it from PATH, where Homebrew's own bin directory comes first.
-    inreplace "src/config.ts",
-              /function defaultGbrainBin\(\): string \{\n\s*const nixProfile = join\(home, "\.nix-profile\/bin\/gbrain"\);\n\s*return existsSync\(nixProfile\) \? nixProfile : "gbrain";\n\}/,
-              <<~TS.chomp
-                function defaultGbrainBin(): string {
-                  return "gbrain";
-                }
-              TS
+    inreplace "src/config.ts", <<~OLD, <<~NEW
+      function defaultGbrainBin(): string {
+        const nixProfile = join(home, ".nix-profile/bin/gbrain");
+        return existsSync(nixProfile) ? nixProfile : "gbrain";
+      }
+    OLD
+      function defaultGbrainBin(): string {
+        return "gbrain";
+      }
+    NEW
 
     libexec.install "src"
     doc.install "README.md"
