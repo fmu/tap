@@ -9,18 +9,20 @@ class GbrainEmbed < Formula
   depends_on "llama.cpp"
 
   def install
+    # The proxy spawns `llama-server` and the `gbrain` CLI directly, so point it
+    # at the Homebrew keg instead of the reference machine's /opt/homebrew path.
+    # Patch before installing the tree: `install` moves files out of the build
+    # directory.
+    llama_server = formula_opt_bin("llama.cpp")/"llama-server"
+    inreplace "src/config.ts", '"/opt/homebrew/bin/llama-server"', %Q("#{llama_server}")
+
     libexec.install "src"
     doc.install "README.md"
 
-    # The proxy spawns `llama-server` and the `gbrain` CLI directly, so point it
-    # at the Homebrew keg instead of the reference machine's /opt/homebrew path.
-    llama_server = Formula["llama.cpp"].opt_bin/"llama-server"
-    inreplace "src/config.ts", '"/opt/homebrew/bin/llama-server"', %("#{llama_server}")
-
     (bin/"gbrain-embed").write <<~SH
       #!/bin/bash
-      export PATH="#{Formula["llama.cpp"].opt_bin}:#{HOMEBREW_PREFIX}/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
-      exec "#{Formula["bun"].opt_bin}/bun" "#{opt_libexec}/src/cli.ts" "$@"
+      export PATH="#{formula_opt_bin("llama.cpp")}:#{HOMEBREW_PREFIX}/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
+      exec "#{formula_opt_bin("bun")}/bun" "#{opt_libexec}/src/cli.ts" "$@"
     SH
     chmod 0755, bin/"gbrain-embed"
   end
