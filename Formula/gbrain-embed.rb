@@ -63,7 +63,7 @@ class GbrainEmbed < Formula
         "stateDir": "#{testpath}/state"
       }
     JSON
-    ENV["GBRAIN_EMBED_CONFIG"] = testpath/"config.json"
+    ENV["GBRAIN_EMBED_CONFIG"] = (testpath/"config.json").to_s
 
     output = shell_output("#{bin}/gbrain-embed status --json")
     assert_match '"ok": false', output
