@@ -1,6 +1,6 @@
 cask "mornye" do
-  version "5.2.6"
-  sha256 "94fd4218aaecd756cd4e2008c80e4ee7304efc36fa1eb1fc2bd27899fe4eda29"
+  version "5.3.0"
+  sha256 "dfaa83ab379889f3349019530533e6170364b026ddb36806ff627aa32aa848fb"
 
   url "https://github.com/mornyeapp/Mornye-Desktop/releases/download/v#{version}/Mornye-v#{version}-macos-universal.dmg"
   name "Mornye"
