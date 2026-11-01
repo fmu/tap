@@ -1,4 +1,4 @@
-# fmu/homebrew
+# fmu/tap
 
 Homebrew formulae and casks for [fmu](https://github.com/fmu)'s tools, plus a
 few apps that homebrew-cask cannot carry. Most packages are re-pinned to
@@ -9,10 +9,10 @@ pinned to the versions [REA](https://github.com/morluto/rea) verifies. See
 ```bash
 # This tap is a multi-formula repository named `homebrew`, so Homebrew cannot
 # derive its URL from `user/repo`; pass the URL explicitly (one time).
-brew tap fmu/homebrew https://github.com/fmu/homebrew-tap.git
+brew tap fmu/tap https://github.com/fmu/tap.git
 
 # Homebrew 5+ keeps third-party taps untrusted until they are named.
-brew trust fmu/homebrew
+brew trust fmu/tap
 ```
 
 Then install what you want:
@@ -254,7 +254,7 @@ Xcode 27, so this tap pins the released tarball instead. Both artifacts come
 from the same tag and are re-pinned together.
 
 ```bash
-brew install fmu/homebrew/pared
+brew install fmu/tap/pared
 ```
 
 The release is Apple silicon and macOS 27 only, and the formula declares that
@@ -270,7 +270,7 @@ A mismatch is not rejected by Ghidra's extension loader at startup — an API mo
 only shows up later as a `NoClassDefFoundError` inside the affected tool.
 
 ```bash
-brew install fmu/homebrew/ghidra@12.1
+brew install fmu/tap/ghidra@12.1
 ```
 
 It is keg-only, so it coexists with core's `ghidra` without either formula
@@ -345,7 +345,7 @@ carries Sparkle (`auto_updates true`), so `brew upgrade` defers to the app's own
 updater. Like the formula, it is Apple silicon and macOS 27 only.
 
 The bundle contains a copy of the CLI, but the cask has no `binary` stanza on
-purpose: `fmu/homebrew/pared` is the CLI's Homebrew route, and a second
+purpose: `fmu/tap/pared` is the CLI's Homebrew route, and a second
 Homebrew-owned `pared` would shadow it.
 
 ## Upstream bumps
@@ -421,7 +421,7 @@ installed locally: audit inspects the installed cellar, and the CI runner audits
 before installing.
 
 To validate a change locally before pushing, tap the checkout under a throwaway
-name (Homebrew refuses a second tap named `fmu/homebrew` while the real one is
+name (Homebrew refuses a second tap named `fmu/tap` while the real one is
 installed):
 
 ```bash

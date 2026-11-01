@@ -37,7 +37,7 @@ class Rea < Formula
   # ghidra@12.1 is named with its tap because several taps may ship a formula
   # with that name (including this machine's fmu/config-nix), and an unqualified
   # dependency would then refuse to resolve.
-  depends_on "fmu/homebrew/ghidra@12.1"
+  depends_on "fmu/tap/ghidra@12.1"
   depends_on "jadx-headless-mcp"
   depends_on "kuna"
 

@@ -23,8 +23,8 @@ jobs:
       - uses: Homebrew/actions/setup-homebrew@main
       - name: Tap this checkout
         run: |
-          brew tap fmu/homebrew "file://${GITHUB_WORKSPACE}"
-          brew trust fmu/homebrew
+          brew tap fmu/tap "file://${GITHUB_WORKSPACE}"
+          brew trust fmu/tap
       - name: Verify REA's engine pins
         # REA is the authority for the jadx-headless-mcp, kuna and Ghidra
         # releases; this fails if any of the formulae drifts from the releases
@@ -33,32 +33,32 @@ jobs:
       - name: Audit formulae
         run: |
           brew audit --strict \
-            fmu/homebrew/gbrain \
-            fmu/homebrew/gbrain-embed \
-            fmu/homebrew/designcraft-cli \
-            fmu/homebrew/pared \
-            fmu/homebrew/ghidra@12.1 \
-            fmu/homebrew/jadx-headless-mcp \
-            fmu/homebrew/kuna \
-            fmu/homebrew/ghidra-mcp \
-            fmu/homebrew/rea
+            fmu/tap/gbrain \
+            fmu/tap/gbrain-embed \
+            fmu/tap/designcraft-cli \
+            fmu/tap/pared \
+            fmu/tap/ghidra@12.1 \
+            fmu/tap/jadx-headless-mcp \
+            fmu/tap/kuna \
+            fmu/tap/ghidra-mcp \
+            fmu/tap/rea
       - name: Audit casks
         run: |
           brew audit --strict --cask \
-            fmu/homebrew/iqualize \
-            fmu/homebrew/mornye \
-            fmu/homebrew/mpv-app \
-            fmu/homebrew/pared-app
+            fmu/tap/iqualize \
+            fmu/tap/mornye \
+            fmu/tap/mpv-app \
+            fmu/tap/pared-app
       - name: Install formulae
         run: |
-          brew install fmu/homebrew/gbrain-embed
-          brew install fmu/homebrew/gbrain
+          brew install fmu/tap/gbrain-embed
+          brew install fmu/tap/gbrain
           # Builds the DesignCraft engine from source with the rust formula.
-          brew install fmu/homebrew/designcraft-cli
+          brew install fmu/tap/designcraft-cli
           # Pared is macOS 27 only; installing it on an older runner fails by
           # design, so only try where it can run.
           if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
-            brew install fmu/homebrew/pared
+            brew install fmu/tap/pared
             echo "PARED_INSTALLED=1" >> "$GITHUB_ENV"
           else
             echo "skipping pared: needs macOS 27, runner is $(sw_vers -productVersion)"
@@ -67,33 +67,33 @@ jobs:
         # Order matters only for readability: ghidra-mcp pulls the pinned
         # ghidra@12.1 (and builds its native components), rea pulls the engines.
         run: |
-          brew install fmu/homebrew/kuna
-          brew install fmu/homebrew/jadx-headless-mcp
-          brew install fmu/homebrew/ghidra-mcp
-          brew install fmu/homebrew/rea
+          brew install fmu/tap/kuna
+          brew install fmu/tap/jadx-headless-mcp
+          brew install fmu/tap/ghidra-mcp
+          brew install fmu/tap/rea
       - name: Install casks
         run: |
           brew install --cask \
-            fmu/homebrew/iqualize \
-            fmu/homebrew/mornye \
-            fmu/homebrew/mpv-app
+            fmu/tap/iqualize \
+            fmu/tap/mornye \
+            fmu/tap/mpv-app
           if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
-            brew install --cask fmu/homebrew/pared-app
+            brew install --cask fmu/tap/pared-app
             echo "PARED_APP_INSTALLED=1" >> "$GITHUB_ENV"
           else
             echo "skipping pared-app: needs macOS 27, runner is $(sw_vers -productVersion)"
           fi
       - name: Test
         run: |
-          brew test fmu/homebrew/gbrain-embed
-          brew test fmu/homebrew/gbrain
-          brew test fmu/homebrew/designcraft-cli
-          brew test fmu/homebrew/kuna
-          brew test fmu/homebrew/jadx-headless-mcp
-          brew test fmu/homebrew/ghidra-mcp
-          brew test fmu/homebrew/rea
+          brew test fmu/tap/gbrain-embed
+          brew test fmu/tap/gbrain
+          brew test fmu/tap/designcraft-cli
+          brew test fmu/tap/kuna
+          brew test fmu/tap/jadx-headless-mcp
+          brew test fmu/tap/ghidra-mcp
+          brew test fmu/tap/rea
           if [ "${PARED_INSTALLED:-}" = "1" ]; then
-            brew test fmu/homebrew/pared
+            brew test fmu/tap/pared
           fi
       - name: Check REA finds its engines
         # The formula's caveats tell users to export these; set them the same way

@@ -18,7 +18,7 @@ class GhidraMcp < Formula
   # script aborts instead of pinning a release built for another version.
   depends_on "certifi" => :no_linkage
   depends_on "cryptography" => :no_linkage
-  depends_on "fmu/homebrew/ghidra@12.1"
+  depends_on "fmu/tap/ghidra@12.1"
   depends_on "pydantic" => :no_linkage
   depends_on "python@3.15"
   depends_on "rpds-py" => :no_linkage
@@ -227,7 +227,7 @@ class GhidraMcp < Formula
     unzip_dir = testpath/"extension"
     system "unzip", "-q", extension, "-d", unzip_dir
     properties = (unzip_dir/"GhidraMCP/extension.properties").read
-    ghidra = Utils::Path.formula_opt_libexec("fmu/homebrew/ghidra@12.1")/"Ghidra/application.properties"
+    ghidra = Utils::Path.formula_opt_libexec("fmu/tap/ghidra@12.1")/"Ghidra/application.properties"
     ghidra_version = ghidra.read[/application\.version=(.+)/, 1]
     assert_match(/^version=#{Regexp.escape(ghidra_version)}$/, properties)
   end
