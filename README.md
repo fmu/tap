@@ -9,7 +9,7 @@ pinned to the versions [REA](https://github.com/morluto/rea) verifies. See
 ```bash
 # This tap is a multi-formula repository named `homebrew`, so Homebrew cannot
 # derive its URL from `user/repo`; pass the URL explicitly (one time).
-brew tap fmu/homebrew https://github.com/fmu/homebrew.git
+brew tap fmu/homebrew https://github.com/fmu/homebrew-tap.git
 
 # Homebrew 5+ keeps third-party taps untrusted until they are named.
 brew trust fmu/homebrew
