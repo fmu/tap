@@ -32,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mornye, mpv-app, pared, partclone, rea, sasquatch, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
+        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, pared, partclone, rea, sasquatch, skippy, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
         required: false
         default: "all"
       tag:
@@ -113,6 +113,14 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/sasquatch.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
+      - name: Bump skippy
+        # Skippy's CLI is only attached to the rolling-preview releases, so
+        # the script scans releases instead of using the latest stable tag.
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'skippy'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/skippy.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
       - name: Bump solidcraft-cli
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'solidcraft-cli'
         env:
@@ -154,6 +162,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/kuna.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump mesh-llm
+        # Stable releases only: the mesh-llm host bundle lives there.
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'mesh-llm'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/mesh-llm.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump mornye
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'mornye'

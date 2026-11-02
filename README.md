@@ -20,6 +20,8 @@ derives the URL from the tap name:
 brew install fmu/tap/rea          # the reverse-engineering MCP server and CLI
 brew install fmu/tap/rea-full     # REA plus every integration Homebrew packages
 brew install fmu/tap/unblob       # firmware extractor (binwalk, 7z, unar, ...)
+brew install fmu/tap/skippy        # standalone model-serving CLI (Apple silicon)
+brew install fmu/tap/mesh-llm      # distributed LLM mesh runtime (Apple silicon)
 brew install fmu/tap/jadx-headless-mcp  # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/kuna         # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
@@ -197,6 +199,44 @@ uses `getmntinfo()` for the mount check, maps the Linux-only
 ```bash
 brew install fmu/tap/partclone
 partclone.restore --version
+```
+
+### skippy
+
+[Skippy](https://github.com/Mesh-LLM/mesh-llm/tree/main/skippy) is Mesh-LLM's
+standalone model-serving product: a CLI that manages models and native runtimes,
+serves OpenAI- and Anthropic-compatible APIs, and runs explicit split stages
+without mesh networking.
+
+Upstream publishes a prebuilt `skippy` CLI for macOS arm64, but only on its
+rolling-preview releases — the stable tags do not carry that asset. The formula
+therefore pins the newest release that actually ships it, and
+`scripts/bump/skippy.py` follows the same rule. `skippy serve` installs a
+verified native runtime and downloads models on first use.
+
+```bash
+brew install fmu/tap/skippy
+skippy doctor
+skippy serve --model Qwen3-0.6B-Q4_K_M
+```
+
+### mesh-llm
+
+[Mesh-LLM](https://github.com/Mesh-LLM/mesh-llm) pools GPUs and memory across
+machines behind one OpenAI-compatible API at `http://localhost:9337/v1`. Its
+release bundle is a prebuilt `mesh-llm` host binary plus a verified Metal native
+runtime; the formula stages that runtime as an archive and unpacks it after
+Homebrew's relocation, because relocation would invalidate the runtime
+manifest's per-file hashes.
+
+`mesh-llm` depends on the `skippy` formula: Mesh embeds the same serving
+implementation, and the standalone CLI is installed for split-stage and runtime
+work.
+
+```bash
+brew install fmu/tap/mesh-llm
+mesh-llm setup
+mesh-llm serve --auto
 ```
 
 ### jadx-headless-mcp
@@ -658,6 +698,8 @@ touched an unrelated package keeps them in the job log.
 | `unblob` | `onekey-sec/unblob` | PyPI `unblob` release (wheels) |
 | `sasquatch` | `onekey-sec/sasquatch` | `sasquatch-v*` |
 | `partclone` | `Thomas-Tsai/partclone` | `<version>` |
+| `skippy` | `Mesh-LLM/mesh-llm` | rolling preview with a `skippy` CLI asset |
+| `mesh-llm` | `Mesh-LLM/mesh-llm` | `v*` |
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
 | `designcraft-cli` | `storytold/designcraft` | `v*` (the tag the `designcraft` cask is on) |
@@ -739,7 +781,8 @@ brew audit --strict fmu/audit/gbrain fmu/audit/qwen3-embed \
   fmu/audit/pared fmu/audit/ghidra@12.1 \
   fmu/audit/jadx-headless-mcp fmu/audit/jadx-headless-mcp@0.7.1 \
   fmu/audit/kuna fmu/audit/kuna@1.833 \
-  fmu/audit/ghidra-mcp fmu/audit/rea
+  fmu/audit/ghidra-mcp fmu/audit/rea \
+  fmu/audit/skippy fmu/audit/mesh-llm
 brew audit --strict --cask fmu/audit/iqualize fmu/audit/mornye \
   fmu/audit/mpv-app fmu/audit/pared-app
 brew untap fmu/audit

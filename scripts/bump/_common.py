@@ -74,6 +74,18 @@ def latest_tag(repo: str) -> str:
     return tag
 
 
+def releases(repo: str, *, per_page: int = 30) -> list[dict]:
+    """Published releases, newest first, prereleases included.
+
+    `latest_tag` only sees non-prerelease releases. Skippy's CLI is attached to
+    the rolling-preview releases only, so its bump has to scan for the asset.
+    """
+    body = _json(f"https://api.github.com/repos/{repo}/releases?per_page={per_page}")
+    if not isinstance(body, list):
+        fail(f"{repo}: unexpected release listing response")
+    return [release for release in body if not release.get("draft")]
+
+
 def version_from_tag(tag: str) -> str:
     """Casks and formulae spell the version without the release tag's `v`."""
     return tag[1:] if tag.startswith("v") else tag
