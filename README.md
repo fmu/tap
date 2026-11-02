@@ -22,6 +22,7 @@ brew install rea          # the reverse-engineering MCP server and CLI
 brew install ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
 brew install gbrain gbrain-embed
 brew install designcraft-cli  # the headless DesignCraft engine (matches the app cask)
+brew install vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install --cask iqualize mornye mpv-app
 ```
 
@@ -248,6 +249,36 @@ from [`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), so
 non-Latin scripts are set in their intended faces instead of falling back to
 system fonts. Upstream ships no Linux CLI binary, so the formula is macOS-only.
 
+### vectorcraft-cli
+
+The headless half of [VectorCraft](https://getartcraft.com/apps/vectorcraft),
+the vector editor that is the `vectorcraft` cask in homebrew-cask. Upstream
+publishes the CLI as a self-contained universal macOS binary next to the app's
+own artifacts, so the formula installs that release asset instead of compiling
+the engine with Rust: `brew install` and `brew upgrade` download it rather than
+spending several minutes in `cargo install`. It runs the app's own document,
+rendering and export engine without a window:
+
+```bash
+brew install vectorcraft-cli
+vectorcraft-cli --version
+vectorcraft-cli commands shape.rectangle               # the command catalogue, as JSON
+vectorcraft-cli info artwork.svg                       # document summary as JSON
+vectorcraft-cli convert artwork.svg artwork.pdf        # re-export in another format
+vectorcraft-cli run --cmd file.new --cmd shape.rectangle --export page.svg
+vectorcraft-cli mcp                                    # MCP server over stdio
+```
+
+The CLI and the app are built from one upstream tag: the formula was added at
+`0.20.0`, the version the `vectorcraft` cask is on, and the scheduled bump moves
+it to the latest upstream release — the same release homebrew-cask's autobump
+puts the app on. The release binary is Developer ID signed, notarized and
+universal (arm64 and x86_64), and unlike a source build it embeds the optional
+extra fonts from
+[`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), so
+non-Latin text is set in its intended faces instead of falling back to system
+fonts. Upstream ships no Linux CLI binary, so the formula is macOS-only.
+
 ### pared
 
 The CLI half of [Pared](https://github.com/4evy/pared); the app is the
@@ -369,6 +400,7 @@ touched an unrelated package keeps them in the job log.
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
 | `designcraft-cli` | `storytold/designcraft` | `v*` (the tag the `designcraft` cask is on) |
+| `vectorcraft-cli` | `storytold/vectorcraft` | `v*` (the tag the `vectorcraft` cask is on) |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
