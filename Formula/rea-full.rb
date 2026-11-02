@@ -47,6 +47,10 @@ class ReaFull < Formula
 
   def install
     prefix.install_metafiles
+    # A metapackage installs only dependencies; keep the npm package manifest so
+    # the keg is not a metafiles-only installation, which Homebrew rejects as an
+    # "Empty installation".
+    prefix.install "package.json"
   end
 
   def caveats

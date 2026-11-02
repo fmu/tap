@@ -39,8 +39,9 @@ class Sasquatch < Formula
       system "make", "EXTRA_CFLAGS=#{cflags}", "LDFLAGS=#{ldflags}"
       bin.install "sasquatch"
       # unblob invokes the same binary under both names (see its SquashFS
-      # handler); upstream installs the second name the same way.
-      bin.install "sasquatch" => "sasquatch-v4be"
+      # handler); a symlink keeps the second name without a second copy.
+      # (`install` moves its source, so installing the same file twice fails.)
+      bin.install_symlink "sasquatch" => "sasquatch-v4be"
     end
   end
 
