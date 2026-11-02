@@ -309,7 +309,7 @@ only while it is in use and unloading one never disturbs the other.
 
 Nothing in it is specific to [gbrain](https://github.com/garrytan/gbrain): any
 client that speaks the OpenAI embeddings API can use the endpoint, and one
-intended use is gbrain embedding (where `setup` also wires up the reranker).
+intended use is gbrain embedding (where `setup-gbrain` also wires up the reranker).
 
 ```bash
 brew install fmu/tap/qwen3-embed

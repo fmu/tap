@@ -15,7 +15,8 @@ class Qwen3Embed < Formula
     inreplace "src/config.ts", '"/opt/homebrew/bin/llama-server"', %Q("#{llama_server}")
 
     # Do not let the Homebrew install silently pick up a Nix-managed gbrain;
-    # resolve the optional `setup` integration's CLI from PATH, where Homebrew's
+    # resolve the optional `setup-gbrain` integration's CLI from PATH, where
+    # Homebrew's
     # own bin directory comes first.
     inreplace "src/config.ts", <<~OLD, <<~NEW
       function defaultGbrainBin(): string {
