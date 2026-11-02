@@ -261,12 +261,18 @@ class Unblob < Formula
       filename = download.basename.to_s.sub(/\A\h{64}--/, "")
       wheels.install download => filename
     end
-    venv.pip_install_and_link wheels.children
+    venv.pip_install wheels.children
 
-    # `pip_install_and_link` symlinked every console script, unblob itself
-    # included. Replace that symlink with a wrapper so unblob finds the tools of
-    # the keg-only e2fsprogs (`debugfs` lives in its sbin) and Homebrew's own
-    # sbin (`partclone.restore`) regardless of the caller's PATH.
+    # Link only the console scripts unblob shells out to. Linking every wheel
+    # script would collide with real formulae (cffi, for example, ships
+    # `cffi-gen-src`).
+    %w[jefferson ubireader_extract_files ubireader_extract_images].each do |script|
+      bin.install_symlink libexec/"bin"/script
+    end
+
+    # `unblob` is a wrapper so it finds the tools of the keg-only e2fsprogs
+    # (`debugfs` lives in its sbin) and Homebrew's own sbin
+    # (`partclone.restore`) regardless of the caller's PATH.
     e2fsprogs = formula_opt_prefix("e2fsprogs")
     wrapper_path = [
       e2fsprogs/"sbin",
@@ -276,7 +282,6 @@ class Unblob < Formula
       "${PATH}",
     ].join(":")
 
-    (bin/"unblob").unlink
     (bin/"unblob").write_env_script libexec/"bin/unblob", PATH: wrapper_path
   end
 
