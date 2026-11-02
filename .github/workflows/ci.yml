@@ -48,6 +48,7 @@ jobs:
       - name: Audit casks
         run: |
           brew audit --strict --cask \
+            fmu/tap/baocut \
             fmu/tap/iqualize \
             fmu/tap/mornye \
             fmu/tap/mpv-app \
@@ -80,6 +81,7 @@ jobs:
       - name: Install casks
         run: |
           brew install --cask \
+            fmu/tap/baocut \
             fmu/tap/iqualize \
             fmu/tap/mornye \
             fmu/tap/mpv-app
@@ -143,10 +145,12 @@ jobs:
           fi
       - name: Check the installed bundles
         run: |
-          for app in iQualize.app Mornye.app mpv.app; do
+          for app in iQualize.app Mornye.app mpv.app BaoCut.app; do
             test -d "/Applications/$app" || { echo "missing /Applications/$app" >&2; exit 1; }
           done
           if [ "${PARED_APP_INSTALLED:-}" = "1" ]; then
             test -d /Applications/Pared.app || { echo "missing /Applications/Pared.app" >&2; exit 1; }
           fi
           command -v mpv
+          command -v baocut-cli
+          baocut-cli version

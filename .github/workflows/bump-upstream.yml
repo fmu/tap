@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, mornye, mpv-app, pared, rea, solidcraft-cli, vectorcraft-cli or wordcraft-cli"
+        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, mornye, mpv-app, pared, rea, solidcraft-cli, vectorcraft-cli or wordcraft-cli"
         required: false
         default: "all"
       tag:
@@ -76,6 +76,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/ghidra-mcp.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump baocut
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'baocut'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/baocut.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump gbrain
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'gbrain'

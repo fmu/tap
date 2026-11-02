@@ -25,7 +25,7 @@ brew install fmu/tap/figcraft-cli  # the headless FigCraft engine (matches the a
 brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stream as the app cask)
 brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
-brew install --cask fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
+brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
 ```
 
 ## Formulae
@@ -413,9 +413,35 @@ a tap whose REA and Ghidra pins disagree.
 
 ## Casks
 
-None of these casks is in homebrew-cask. `iqualize` is simply not shipped there;
-the other three fail homebrew-cask's notarization requirement, and their casks
-carry the one-time Gatekeeper workaround as a caveat.
+None of these casks is in homebrew-cask. `baocut` and `iqualize` simply have no
+homebrew-cask entry; the other three fail homebrew-cask's notarization
+requirement, and their casks carry the one-time Gatekeeper workaround as a
+caveat.
+
+### baocut
+
+[BaoCut](https://baocut.com/) is an AI video agent with an editable timeline: it
+transcribes, subtitles, translates, dubs, cuts and animates, and every result
+lands in a timeline you can keep editing. It is Apple silicon and macOS 14+ only,
+and upstream signs and notarizes the app, so unlike the other casks here it needs
+no Gatekeeper workaround. It has no homebrew-cask entry yet, which is why it
+lives in this tap.
+
+```bash
+brew install --cask fmu/tap/baocut
+open -a BaoCut
+baocut-cli version        # the app's agent entrypoint, linked into the prefix
+baocut-cli status         # what this machine can do: runtime, tools and models
+```
+
+The app updates itself from the release's appcast feed, so `brew upgrade` defers
+to it; the scheduled bump keeps the tap's pin current for fresh installs.
+`baocut-cli` is the CLI the desktop bundle already ships — the same release as
+the app — linked into the Homebrew prefix so it works from a shell;
+`BAOCUT_CLI` can point at `$(brew --prefix)/bin/baocut-cli` when a tool needs an
+absolute path. The cask depends on the `ffmpeg` formula, which supplies the
+`ffmpeg` and `ffprobe` the app's media analysis, transcription preparation and
+export shell out to.
 
 ### iqualize
 
@@ -496,6 +522,7 @@ touched an unrelated package keeps them in the job log.
 | `solidcraft-cli` | `tangency-labs/solidcraft` | `v*` (the release stream the `solidcraft` cask tracks) |
 | `vectorcraft-cli` | `storytold/vectorcraft` | `v*` (the tag the `vectorcraft` cask is on) |
 | `wordcraft-cli` | `storytold/wordcraft` | `v*` (the tag the `wordcraft` cask is on) |
+| `baocut` | `JimLiu/baocut` | `baocut-v*` |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
