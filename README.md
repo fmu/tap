@@ -223,10 +223,12 @@ adds the reranker).
 ### designcraft-cli
 
 The headless half of [DesignCraft](https://getartcraft.com/apps/designcraft),
-the page-layout app that is the `designcraft` cask in homebrew-cask. Like
-homebrew-core's `photocraft-cli`, the formula builds the CLI from the app's
-tagged source with Rust, so it runs the app's own layout composer, renderer and
-exporter without a window:
+the page-layout app that is the `designcraft` cask in homebrew-cask. Upstream
+publishes the CLI as a self-contained universal macOS binary next to the app's
+own artifacts, so the formula installs that release asset instead of compiling
+the engine with Rust: `brew install` and `brew upgrade` download it rather than
+spending several minutes in `cargo install`. It runs the app's own layout
+composer, renderer and exporter without a window:
 
 ```bash
 brew install designcraft-cli
@@ -240,11 +242,11 @@ designcraft-cli mcp                                     # MCP server over stdio
 The CLI and the app are built from one upstream tag: the formula was added at
 `0.15.2`, the version the `designcraft` cask is on, and the scheduled bump moves
 it to the latest upstream release — the same release homebrew-cask's autobump
-puts the app on. The build takes a few minutes on the first install. A source
-build does not embed the optional extra fonts from
-[`storytold/craft-fonts`](https://github.com/storytold/craft-fonts) the way the
-release binaries do; Latin text is unaffected, and other scripts fall back to
-the system fonts.
+puts the app on. The release binary is Developer ID signed and universal
+(arm64 and x86_64), and unlike a source build it embeds the optional extra fonts
+from [`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), so
+non-Latin scripts are set in their intended faces instead of falling back to
+system fonts. Upstream ships no Linux CLI binary, so the formula is macOS-only.
 
 ### pared
 

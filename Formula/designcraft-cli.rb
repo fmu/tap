@@ -1,37 +1,36 @@
 # The headless half of the DesignCraft release. The app is the `designcraft`
 # cask in homebrew-cask: both are built from one upstream tag, so this formula
-# is pinned to the release the app is on when it is added (0.15.2) and the
-# scheduled bump follows the same GitHub release stream the cask tracks.
+# is pinned to the release the app is on and the scheduled bump follows the same
+# GitHub release stream the cask tracks.
 #
-# It is packaged like homebrew-core's photocraft-cli formula: build the CLI from
-# the tagged source with Rust, prefetching crates in `fetch` so the install
-# itself runs without network access. `run`, `script`, `commands`, `describe`,
-# `mcp`, `validate-pdf`, `perf` and `bench` are the same engine the app uses;
-# `run --sample --export page.png` exercises layout and rendering in `brew test`
-# without starting the desktop app.
+# Upstream publishes the CLI as a self-contained universal macOS binary next to
+# the app artifacts, so the formula installs that release asset instead of
+# compiling the engine with Rust: `brew upgrade` is a download rather than a
+# multi-minute `cargo install`, and the release binary carries the optional
+# extra fonts from storytold/craft-fonts. `run`, `script`, `commands`,
+# `describe`, `mcp`, `validate-pdf`, `perf` and `bench` are the same engine the
+# app uses; `run --sample --export page.png` exercises layout and rendering in
+# `brew test` without starting the desktop app.
+#
+# The asset is macOS-only (upstream ships no Linux CLI binary, and the Linux
+# artifacts are GUI bundles), so the formula declares macOS instead of
+# installing a Mach-O binary on a host that cannot run it.
 class DesigncraftCli < Formula
   desc "Headless DesignCraft engine to lay out, edit and export documents"
   homepage "https://getartcraft.com/apps/designcraft"
-  url "https://github.com/storytold/designcraft/archive/refs/tags/v0.16.0.tar.gz"
-  sha256 "574e2899f09e7b82e226b37d51604df663ed01e75a47c394fc1ddfcfd5c83d1f"
+  url "https://github.com/storytold/designcraft/releases/download/v0.16.0/designcraft-cli-0.16.0-macos-universal.zip"
+  sha256 "9985ca3ceda27bd4c59b28121fcd99e33fef088380059f69f3e7e7409ff24f1a"
   license any_of: ["MIT", "Apache-2.0"]
-  head "https://github.com/storytold/designcraft.git", branch: "main"
 
   livecheck do
     url :stable
     strategy :github_latest
   end
 
-  depends_on "rust" => :build
-
-  deny_network_access!
-
-  def fetch
-    system "cargo", "fetch", *std_cargo_fetch_args
-  end
+  depends_on :macos
 
   def install
-    system "cargo", "install", *std_cargo_args(path: "apps/designcraft-cli")
+    bin.install "designcraft-cli"
   end
 
   test do
