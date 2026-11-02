@@ -238,6 +238,15 @@ class Unblob < Formula
 
   # END GENERATED WHEELS
 
+  # The build phase of `brew install` runs without network access, but the wheel
+  # resources are fetched lazily (the `resource.fetch` calls in `install`). When
+  # unblob is installed as another formula's dependency, that lazy fetch can run
+  # while the download cache is still empty. Download every wheel in the fetch
+  # phase, which still has network; `install` then finds them in the cache.
+  def fetch
+    resources.each(&:fetch)
+  end
+
   def install
     venv = virtualenv_create(libexec, "python3.14")
     wheels = buildpath/"wheels"
