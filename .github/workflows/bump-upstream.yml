@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, designcraft-cli, gbrain, ghidra-mcp, iqualize, mornye, mpv-app, pared, rea or vectorcraft-cli"
+        description: "Package to bump: all, designcraft-cli, gbrain, ghidra-mcp, iqualize, mornye, mpv-app, pared, rea, vectorcraft-cli or wordcraft-cli"
         required: false
         default: "all"
       tag:
@@ -94,6 +94,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/vectorcraft-cli.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump wordcraft-cli
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'wordcraft-cli'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/wordcraft-cli.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump iqualize
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'iqualize'
