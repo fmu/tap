@@ -7,26 +7,25 @@ pinned to the versions [REA](https://github.com/morluto/rea) verifies. See
 [Upstream bumps](#upstream-bumps).
 
 ```bash
-# This tap is a multi-formula repository named `homebrew`, so Homebrew cannot
-# derive its URL from `user/repo`; pass the URL explicitly (one time).
-brew tap fmu/tap https://github.com/fmu/tap.git
-
 # Homebrew 5+ keeps third-party taps untrusted until they are named.
 brew trust fmu/tap
 ```
 
-Then install what you want:
+Then install what you want. Naming a package with the tap also taps this
+repository automatically, so `brew install fmu/tap/rea` works on a machine that
+has never tapped it; `brew tap fmu/tap` alone is enough too, since Homebrew
+derives the URL from the tap name:
 
 ```bash
-brew install rea          # the reverse-engineering MCP server and CLI
-brew install ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
-brew install gbrain gbrain-embed
-brew install designcraft-cli  # the headless DesignCraft engine (matches the app cask)
-brew install figcraft-cli  # the headless FigCraft engine (matches the app cask)
-brew install solidcraft-cli  # the headless SolidCraft engine (same stream as the app cask)
-brew install vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
-brew install wordcraft-cli  # the headless WordCraft engine (matches the app cask)
-brew install --cask iqualize mornye mpv-app
+brew install fmu/tap/rea          # the reverse-engineering MCP server and CLI
+brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
+brew install fmu/tap/gbrain fmu/tap/gbrain-embed
+brew install fmu/tap/designcraft-cli  # the headless DesignCraft engine (matches the app cask)
+brew install fmu/tap/figcraft-cli  # the headless FigCraft engine (matches the app cask)
+brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stream as the app cask)
+brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
+brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
+brew install --cask fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
 ```
 
 ## Formulae
@@ -41,7 +40,7 @@ agent plugins use — so `rea doctor`, `rea setup` and `rea mcp` behave exactly
 as documented upstream.
 
 ```bash
-brew install rea
+brew install fmu/tap/rea
 rea doctor --json
 rea setup                       # register agent clients
 ```
@@ -92,7 +91,7 @@ REA drives it through `REA_JADX_MCP_JAR`, so the formula installs the release
 fat JAR at a stable path:
 
 ```bash
-brew install jadx-headless-mcp
+brew install fmu/tap/jadx-headless-mcp
 # REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp)/libexec/jadx-headless-mcp.jar"
 ```
 
@@ -106,7 +105,7 @@ distributed as one self-contained executable. REA drives it through
 `REA_KUNA_COMMAND`:
 
 ```bash
-brew install kuna
+brew install fmu/tap/kuna
 # REA_KUNA_COMMAND="$(brew --prefix kuna)/bin/kuna"
 ```
 
@@ -121,7 +120,7 @@ plus a Python `ghidra-mcp` MCP server that clients launch. It is independent of
 REA, which has its own Ghidra bridge.
 
 ```bash
-brew install ghidra-mcp
+brew install fmu/tap/ghidra-mcp
 ```
 
 The formula installs the Ghidra extension built for the pinned `ghidra@12.1`
@@ -158,7 +157,7 @@ knowledge brain with hybrid RAG search. The formula installs upstream's
 self-contained binary; it is not the unrelated npm `gbrain` package.
 
 ```bash
-brew install gbrain
+brew install fmu/tap/gbrain
 gbrain init --pglite
 gbrain doctor
 ```
@@ -183,12 +182,12 @@ Each one stops again after its own idle window, so either model is resident
 only while it is in use and unloading one never disturbs the other.
 
 ```bash
-brew install gbrain-embed
+brew install fmu/tap/gbrain-embed
 ```
 
 The formula depends on `bun` and `llama.cpp` from Homebrew; there are no Nix
 dependencies. It needs the `gbrain` CLI on `PATH`; install it from this same tap
-(`brew install gbrain`) or use your existing installation.
+(`brew install fmu/tap/gbrain`) or use your existing installation.
 
 Post-install, once:
 
@@ -235,7 +234,7 @@ spending several minutes in `cargo install`. It runs the app's own layout
 composer, renderer and exporter without a window:
 
 ```bash
-brew install designcraft-cli
+brew install fmu/tap/designcraft-cli
 designcraft-cli --version
 designcraft-cli commands footnote                       # commands whose id/label/menu match
 designcraft-cli run --sample --export page.png          # render a page of the built-in sample
@@ -264,7 +263,7 @@ asset instead of compiling the engine with Rust: `brew install` and
 without a window:
 
 ```bash
-brew install figcraft-cli
+brew install fmu/tap/figcraft-cli
 figcraft-cli --version
 figcraft-cli commands                                 # every command with its parameters
 figcraft-cli info artwork.figcraft                    # pages, node and style counts
@@ -295,7 +294,7 @@ minutes in `cargo install`. It runs the app's own solid kernel, evaluator and
 exporters without a window:
 
 ```bash
-brew install solidcraft-cli
+brew install fmu/tap/solidcraft-cli
 solidcraft-cli --version
 solidcraft-cli commands                              # the command registry, as JSON
 solidcraft-cli run box.json --out box.step           # a command script, exported to STEP
@@ -322,7 +321,7 @@ spending several minutes in `cargo install`. It runs the app's own document,
 rendering and export engine without a window:
 
 ```bash
-brew install vectorcraft-cli
+brew install fmu/tap/vectorcraft-cli
 vectorcraft-cli --version
 vectorcraft-cli commands shape.rectangle               # the command catalogue, as JSON
 vectorcraft-cli info artwork.svg                       # document summary as JSON
@@ -352,7 +351,7 @@ spending several minutes in `cargo install`. It runs the app's own document
 model, saver and exporters without a window:
 
 ```bash
-brew install wordcraft-cli
+brew install fmu/tap/wordcraft-cli
 wordcraft-cli --version
 wordcraft-cli commands                                 # the command catalogue
 wordcraft-cli convert report.docx report.pdf           # docx, pdf, odt, rtf, html, md, tex, txt, png
