@@ -1,0 +1,137 @@
+--- a/squashfs-tools/unsquashfs.c
++++ b/squashfs-tools/unsquashfs.c
+@@ -32,8 +32,12 @@
+ #include "stdarg.h"
+ #include "fnmatch_compat.h"
+ 
++#if defined(__linux__)
+ #include <sys/sysinfo.h>
+ #include <sys/sysmacros.h>
++#else
++#include <sys/sysctl.h>
++#endif
+ #include <sys/types.h>
+ #include <sys/time.h>
+ #include <sys/resource.h>
+--- a/squashfs-tools/unsquashfs_info.c
++++ b/squashfs-tools/unsquashfs_info.c
+@@ -41,6 +41,70 @@
+ #include "unsquashfs.h"
+ #include "unsquashfs_error.h"
+ 
++/*
++ * Darwin does not implement sigtimedwait()/sigwaitinfo(). The info thread only
++ * uses them to pace the status dumps triggered by "\", so provide portable
++ * equivalents built on sigwait() plus a polled wait.
++ */
++#if !defined(__linux__)
++static int squashfs_sigwaitinfo(const sigset_t *set, siginfo_t *info)
++{
++	int sig;
++
++	if(sigwait(set, &sig) != 0)
++		return -1;
++
++	if(info != NULL) {
++		memset(info, 0, sizeof(*info));
++		info->si_signo = sig;
++	}
++
++	return sig;
++}
++
++static int squashfs_sigtimedwait(const sigset_t *set, siginfo_t *info,
++	const struct timespec *timeout)
++{
++	struct timespec elapsed = { 0, 0 };
++	const struct timespec interval = { 0, 100000000 };
++	struct timespec remaining = *timeout;
++	int sig;
++
++	while(1) {
++		sigset_t pending = *set;
++
++		if(sigpending(&pending) == 0) {
++			for(sig = 1; sig < NSIG; sig++) {
++				if(sigismember(&pending, sig) == 1) {
++					if(info != NULL) {
++						memset(info, 0, sizeof(*info));
++						info->si_signo = sig;
++					}
++					return sig;
++				}
++			}
++		}
++
++		if(elapsed.tv_sec > timeout->tv_sec ||
++			(elapsed.tv_sec == timeout->tv_sec &&
++			 elapsed.tv_nsec >= timeout->tv_nsec)) {
++			errno = EAGAIN;
++			return -1;
++		}
++
++		nanosleep(&interval, &remaining);
++		elapsed.tv_nsec += interval.tv_nsec;
++		if(elapsed.tv_nsec >= 1000000000) {
++			elapsed.tv_nsec -= 1000000000;
++			elapsed.tv_sec++;
++		}
++	}
++}
++
++#define sigwaitinfo squashfs_sigwaitinfo
++#define sigtimedwait squashfs_sigtimedwait
++#endif
++
+ char *pathname = NULL;
+ 
+ pthread_t info_thread;
+--- a/squashfs-tools/unsquashfs_xattr.c
++++ b/squashfs-tools/unsquashfs_xattr.c
+@@ -26,6 +26,7 @@
+ #include "xattr.h"
+ 
+ #include <sys/xattr.h>
++#include "xattr_compat.h"
+ 
+ #define NOSPACE_MAX 10
+ 
+--- a/squashfs-tools/xattr_compat.h
++++ b/squashfs-tools/xattr_compat.h
+@@ -0,0 +1,36 @@
++#ifndef XATTR_COMPAT_H
++#define XATTR_COMPAT_H
++/*
++ * Squashfs
++ *
++ * Copyright (c) 2024
++ * Phillip Lougher <phillip@squashfs.org.uk>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2,
++ * or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ *
++ * xattr_compat.h
++ */
++
++#ifdef XATTR_NOFOLLOW /* Apple's xattrs */
++#define lsetxattr(path_, name_, val_, sz_, flags_) \
++	setxattr(path_, name_, val_, sz_, 0, flags_ | XATTR_NOFOLLOW)
++
++#define llistxattr(path_, buf_, sz_) \
++	listxattr(path_, buf_, sz_, XATTR_NOFOLLOW)
++
++#define lgetxattr(path_, name_, val_, sz_) \
++	getxattr(path_, name_, val_, sz_, 0, XATTR_NOFOLLOW)
++#endif
++#endif

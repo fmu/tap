@@ -10,6 +10,7 @@
 #   apktool     apktool      REA_APKTOOL_COMMAND
 #   binwalk     binwalk 3.1  REA_BINWALK_COMMAND
 #   tshark      wireshark    REA_TSHARK_COMMAND, plus capinfos
+#   unblob      unblob       REA_UNBLOB_COMMAND (firmware extraction)
 #   WABT        wabt 1.0.42  REA_WABT_BIN_DIRECTORY (absolute directory)
 #   sigrok      sigrok-cli   REA_SIGROK_COMMAND
 #
@@ -19,8 +20,8 @@
 # would never see it.
 #
 # The rest cannot be formula dependencies: Hopper, Cutter and mitmproxy are
-# casks, and unblob, IDA and JEB are not packaged in Homebrew at all. The
-# caveats list the cask commands and the settings for the rest.
+# casks, and IDA and JEB are not packaged in Homebrew at all. The caveats list
+# the cask commands and the settings for the rest.
 #
 # The source below is Formula/rea.rb's own tarball, used only for its
 # documentation; `scripts/bump/rea.py` re-pins both formulae from one release.
@@ -40,6 +41,7 @@ class ReaFull < Formula
   depends_on "gdb"
   depends_on "rizin"
   depends_on "sigrok-cli"
+  depends_on "unblob"
   depends_on "wabt"
   depends_on "wireshark"
 
@@ -56,8 +58,8 @@ class ReaFull < Formula
         brew install --cask cutter                # Cutter, rizin's GUI
         brew install --cask mitmproxy             # mitmdump
 
-      unblob, IDA and JEB are not in Homebrew; `rea doctor --json` names the
-      setting for each integration it cannot find. WABT wants an absolute
+      IDA and JEB are not in Homebrew; `rea doctor --json` names the setting
+      for each integration it cannot find. WABT wants an absolute
       directory rather than a PATH entry:
 
         export REA_WABT_BIN_DIRECTORY="$(brew --prefix wabt)/bin"
