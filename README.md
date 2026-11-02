@@ -19,6 +19,9 @@ derives the URL from the tap name:
 ```bash
 brew install fmu/tap/rea          # the reverse-engineering MCP server and CLI
 brew install fmu/tap/rea-full     # REA plus every integration Homebrew packages
+brew install fmu/tap/unblob       # firmware extractor (binwalk, 7z, unar, ...)
+brew install fmu/tap/jadx-headless-mcp  # latest upstream (REA uses the pinned @ keg)
+brew install fmu/tap/kuna         # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
 brew install fmu/tap/gbrain fmu/tap/gbrain-embed
 brew install fmu/tap/designcraft-cli  # the headless DesignCraft engine (matches the app cask)
@@ -52,8 +55,8 @@ the tap pins them together with REA instead of tracking each upstream latest:
 
 | package | pinned | REA source of truth |
 | --- | --- | --- |
-| `jadx-headless-mcp` | 0.7.1 | `src/android/JadxRelease.ts` |
-| `kuna` | 1.833 | `src/kuna/KunaRelease.ts` |
+| `jadx-headless-mcp@0.7.1` | 0.7.1 | `src/android/JadxRelease.ts` |
+| `kuna@1.833` | 1.833 | `src/kuna/KunaRelease.ts` |
 | `ghidra@12.1` | 12.1.4 | `src/ghidra/GhidraReleasePolicy.ts` |
 
 The formula depends on all three, plus `node` and `openjdk`. `rea` finds its
@@ -63,8 +66,8 @@ registrations it writes:
 
 ```bash
 export GHIDRA_INSTALL_DIR="$(brew --prefix ghidra@12.1)/libexec"
-export REA_KUNA_COMMAND="$(brew --prefix kuna)/bin/kuna"
-export REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp)/libexec/jadx-headless-mcp.jar"
+export REA_KUNA_COMMAND="$(brew --prefix kuna@1.833)/bin/kuna"
+export REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp@0.7.1)/libexec/jadx-headless-mcp.jar"
 ```
 
 Hopper is an optional provider and ships as a cask in homebrew-cask:
@@ -97,13 +100,14 @@ missing. It depends on `rea` and on the formulae below:
 | gdb | `gdb` | `REA_GDB_COMMAND` |
 | Android APK unpacking | `apktool` | `REA_APKTOOL_COMMAND` |
 | firmware images | `binwalk` | `REA_BINWALK_COMMAND` |
+| firmware extraction | `unblob` | `REA_UNBLOB_COMMAND` |
 | capture dissection | `wireshark` (`tshark`, `capinfos`) | `REA_TSHARK_COMMAND` |
 | WebAssembly | `wabt` (`wasm2wat` …) | `REA_WABT_BIN_DIRECTORY` |
 | signal decoding | `sigrok-cli` | `REA_SIGROK_COMMAND` |
 
-`rea` itself brings the engines (`jadx-headless-mcp`, `kuna` and
-`ghidra@12.1`); the standalone `ghidra-mcp` server is not a REA provider, so
-it is not part of the bundle.
+`rea` itself brings the pinned engines (`jadx-headless-mcp@0.7.1`,
+`kuna@1.833` and `ghidra@12.1`); the standalone `ghidra-mcp` server is not a REA
+provider, so it is not part of the bundle.
 
 ```bash
 brew install fmu/tap/rea-full
@@ -113,8 +117,8 @@ rea doctor --json
 `objdump` needs no dependency: the Command Line Tools' `/usr/bin/objdump` is
 what REA looks for by default, and GNU binutils would not do because it is
 keg-only and prefixes its tools (`gobjdump`). The remaining providers cannot be
-formula dependencies — Hopper, Cutter and mitmproxy are casks, and unblob, IDA
-and JEB are not in Homebrew at all:
+formula dependencies — Hopper, Cutter and mitmproxy are casks, and IDA and JEB
+are not in Homebrew at all:
 
 ```bash
 brew install --cask hopper-disassembler cutter mitmproxy
@@ -130,6 +134,71 @@ export REA_WABT_BIN_DIRECTORY="$(brew --prefix wabt)/bin"
 `rea-full` is pinned with `rea` by `scripts/bump/rea.py`, so the metapackage and
 the CLI cannot drift apart.
 
+### unblob
+
+[unblob](https://unblob.org) extracts files from container formats — archive,
+compression, filesystem and firmware formats — and is the extractor `rea` drives
+through `REA_UNBLOB_COMMAND`. It is not in Homebrew, which is why this tap
+packages it.
+
+Upstream publishes prebuilt wheels only: unblob itself is a PyO3/maturin
+project and several dependencies (`lief`, `pyperscan`, `cryptography`, `lz4`, …)
+are compiled, so the formula installs the published macOS arm64 / CPython 3.14
+wheels instead of compiling them. `scripts/bump/unblob.py` resolves the wheel
+set from PyPI and pins every URL and SHA-256; `brew upgrade` moves the whole set
+with the release.
+
+```bash
+brew install fmu/tap/unblob
+unblob --version
+unblob --show-external-dependencies   # the extractor tools and their status
+```
+
+unblob shells out to external extractor tools. The ones Homebrew packages are
+dependencies (`p7zip` for `7z`, `unar`, `lzop`, `lziprecover`, `lz4`, `zstd`,
+`erofs-utils` for `fsck.erofs`, `simg2img`, `partclone` for
+`partclone.restore`, `sasquatch` for SquashFS, and `libmagic` for the Python
+bindings). `debugfs` comes from the keg-only `e2fsprogs` formula; the installed
+`unblob` is a wrapper that prepends e2fsprogs' sbin (and Homebrew's own sbin)
+to `PATH`, so every extractor is found out of the box — `unblob
+--show-external-dependencies` should list them all with a ✓.
+
+### sasquatch
+
+[sasquatch](https://github.com/onekey-sec/sasquatch) is ONEKEY's fork of
+squashfs-tools with the vendor SquashFS variants that device firmware uses. It
+is not in Homebrew; the formula builds the tagged source (upstream's releases
+are Debian packages) and installs the binary under both names unblob invokes:
+`sasquatch` and `sasquatch-v4be` for big-endian v4 images.
+
+The fork still assumes Linux, so the formula carries a small Darwin patch:
+Linux-only headers are guarded, the status thread's `sigtimedwait()` is
+emulated with `sigwait()`, and the Linux `l*xattr()` wrappers are mapped onto
+Apple's `XATTR_NOFOLLOW` variants.
+
+```bash
+brew install fmu/tap/sasquatch
+sasquatch -version
+```
+
+### partclone
+
+[partclone](https://partclone.org/) backs up and restores the used blocks of a
+partition. unblob drives `partclone.restore` to unpack partclone images, so the
+formula builds the generic tools only; the filesystem-specific ones
+(`partclone.extfs`, `partclone.ntfs`, …) need libraries macOS does not have.
+
+Upstream targets Linux: the Darwin patch guards `linux/fs.h` and `mntent.h`,
+uses `getmntinfo()` for the mount check, maps the Linux-only
+`O_LARGEFILE`/`O_DIRECT` flags to no-ops, and drops the Linux-only
+`ntfsfixboot` helper. The build itself uses the upstream autotools flow, with
+`openssl@3` and `zstd` providing the crypto and compressor it links.
+
+```bash
+brew install fmu/tap/partclone
+partclone.restore --version
+```
+
 ### jadx-headless-mcp
 
 [`jadx-headless-mcp`](https://github.com/1013503897/jadx-headless-mcp) exposes
@@ -138,12 +207,16 @@ REA drives it through `REA_JADX_MCP_JAR`, so the formula installs the release
 fat JAR at a stable path:
 
 ```bash
-brew install fmu/tap/jadx-headless-mcp
-# REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp)/libexec/jadx-headless-mcp.jar"
+brew install fmu/tap/jadx-headless-mcp        # latest upstream release
+brew install fmu/tap/jadx-headless-mcp@0.7.1  # the release REA verifies
+# REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp@0.7.1)/libexec/jadx-headless-mcp.jar"
 ```
 
-The version is pinned to the one REA verifies (upstream is ahead); it is bumped
-by `scripts/bump/rea.py` together with REA.
+The unversioned formula tracks upstream's latest release and is bumped by
+`scripts/bump/jadx-headless-mcp.py`. The JAR REA verifies is a separate,
+keg-only versioned formula (`jadx-headless-mcp@0.7.1`) that `scripts/bump/rea.py`
+pins and renames together with REA; REA is pointed at that keg explicitly, so
+the latest release never shadows the verified JAR.
 
 ### kuna
 
@@ -152,12 +225,19 @@ distributed as one self-contained executable. REA drives it through
 `REA_KUNA_COMMAND`:
 
 ```bash
-brew install fmu/tap/kuna
-# REA_KUNA_COMMAND="$(brew --prefix kuna)/bin/kuna"
+brew install fmu/tap/kuna        # latest upstream release
+brew install fmu/tap/kuna@1.833  # the release REA verifies
+# REA_KUNA_COMMAND="$(brew --prefix kuna@1.833)/bin/kuna"
 ```
 
-The version is pinned to the one REA verifies (upstream is ahead); it is bumped
-by `scripts/bump/rea.py` together with REA.
+The unversioned formula tracks upstream's latest release and is bumped by
+`scripts/bump/kuna.py`. The release REA verifies is a separate, keg-only
+versioned formula (`kuna@1.833`); only that keg may be on REA's PATH, while
+another tap may still ship its own `kuna`. `scripts/bump/rea.py` pins and
+renames it together with REA: when REA starts verifying a different Kuna, the
+script renames the formula (`Formula/kuna@<old>.rb` → `Formula/kuna@<new>.rb`,
+class `KunaAT<old>` → `KunaAT<new>`) and updates the `depends_on` and
+documentation that name it, so the pin is never half-migrated.
 
 ### ghidra-mcp
 
@@ -561,7 +641,12 @@ touched an unrelated package keeps them in the job log.
 
 | package | upstream | release tag |
 | --- | --- | --- |
-| `rea` (+ `rea-full`, `jadx-headless-mcp`, `kuna`) | `morluto/rea` | `rea-agents-<version>` |
+| `rea` (+ `rea-full`, `jadx-headless-mcp@<REA pin>`, `kuna@<REA pin>`) | `morluto/rea` | `rea-agents-<version>` |
+| `jadx-headless-mcp` (latest; REA uses `jadx-headless-mcp@<REA pin>`) | `1013503897/jadx-headless-mcp` | `v*` |
+| `kuna` (latest; REA uses `kuna@<REA pin>`) | `Noelo-Lab/kuna` | `v*` |
+| `unblob` | `onekey-sec/unblob` | PyPI `unblob` release (wheels) |
+| `sasquatch` | `onekey-sec/sasquatch` | `sasquatch-v*` |
+| `partclone` | `Thomas-Tsai/partclone` | `<version>` |
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
 | `designcraft-cli` | `storytold/designcraft` | `v*` (the tag the `designcraft` cask is on) |
@@ -575,16 +660,20 @@ touched an unrelated package keeps them in the job log.
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
 | `pared` + `pared-app` | `4evy/pared` | no `v` prefix |
 
-Two packages are coupled rather than independent:
+Two things are coupled rather than independent:
 
-- `rea` is the authority for the engine versions. `scripts/bump/rea.py` pins the
-  `rea-agents` npm tarball and reads the engine releases the new tag verifies
-  from its source (`src/android/JadxRelease.ts`, `src/kuna/KunaRelease.ts`,
-  `src/ghidra/GhidraReleasePolicy.ts`), then re-pins `Formula/rea.rb`,
-  `Formula/rea-full.rb`, `Formula/jadx-headless-mcp.rb` and
-  `Formula/kuna.rb` in one commit. A Ghidra
-  move also needs a new `ghidra@12.1` keg and a GhidraMCP extension built for
-  that release, so the script fails instead of writing a tap whose pins disagree.
+- `rea` is the authority for the pinned engine versions. `scripts/bump/rea.py`
+  pins the `rea-agents` npm tarball and reads the engine releases the new tag
+  verifies from its source (`src/android/JadxRelease.ts`,
+  `src/kuna/KunaRelease.ts`, `src/ghidra/GhidraReleasePolicy.ts`), then re-pins
+  `Formula/rea.rb`, `Formula/rea-full.rb` and the versioned kegs
+  `Formula/jadx-headless-mcp@<release>.rb` and `Formula/kuna@<release>.rb` in one
+  commit. When REA verifies a different JADX or Kuna, the script renames that
+  keg and every `depends_on`/doc reference with it. A Ghidra move also needs a
+  new `ghidra@12.1` keg and a GhidraMCP extension built for that release, so the
+  script fails instead of writing a tap whose pins disagree. The unversioned
+  `jadx-headless-mcp` and `kuna` formulae are not part of that pin: they track
+  upstream's latest releases and are bumped by their own scripts.
 - `ghidra-mcp` only accepts a release whose extension targets the Ghidra keg the
   tap pins; it never creates a mismatched extension.
 
@@ -609,6 +698,7 @@ GitHub API, an optional `GH_TOKEN`:
 ```bash
 python3 scripts/bump/mornye.py            # latest upstream release
 RELEASE_TAG=v5.2.6 python3 scripts/bump/mornye.py   # a specific tag
+python3 scripts/bump/kuna.py              # latest Kuna, for the unversioned formula
 python3 scripts/bump/rea.py --check       # verify the engine pin matrix
 ```
 
@@ -636,7 +726,8 @@ brew tap fmu/audit "file://$PWD"   # the tap is named fmu/audit
 brew trust fmu/audit
 brew audit --strict fmu/audit/gbrain fmu/audit/gbrain-embed \
   fmu/audit/pared fmu/audit/ghidra@12.1 \
-  fmu/audit/jadx-headless-mcp fmu/audit/kuna \
+  fmu/audit/jadx-headless-mcp fmu/audit/jadx-headless-mcp@0.7.1 \
+  fmu/audit/kuna fmu/audit/kuna@1.833 \
   fmu/audit/ghidra-mcp fmu/audit/rea
 brew audit --strict --cask fmu/audit/iqualize fmu/audit/mornye \
   fmu/audit/mpv-app fmu/audit/pared-app

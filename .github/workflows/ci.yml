@@ -42,10 +42,15 @@ jobs:
             fmu/tap/pared \
             fmu/tap/ghidra@12.1 \
             fmu/tap/jadx-headless-mcp \
+            fmu/tap/jadx-headless-mcp@0.7.1 \
             fmu/tap/kuna \
+            fmu/tap/kuna@1.833 \
             fmu/tap/ghidra-mcp \
             fmu/tap/rea \
-            fmu/tap/rea-full
+            fmu/tap/rea-full \
+            fmu/tap/partclone \
+            fmu/tap/sasquatch \
+            fmu/tap/unblob
       - name: Audit casks
         run: |
           brew audit --strict --cask \
@@ -76,8 +81,12 @@ jobs:
         # ghidra@12.1 (and builds its native components); rea-full pulls rea,
         # the engines rea verifies, and the optional integrations Homebrew has.
         run: |
+          # The unversioned kegs track upstream's latest releases; REA itself
+          # uses the pinned @ kegs that rea-full pulls in.
           brew install fmu/tap/kuna
+          brew install fmu/tap/kuna@1.833
           brew install fmu/tap/jadx-headless-mcp
+          brew install fmu/tap/jadx-headless-mcp@0.7.1
           brew install fmu/tap/ghidra-mcp
           brew install fmu/tap/rea-full
       - name: Install casks
@@ -103,20 +112,29 @@ jobs:
           brew test fmu/tap/vectorcraft-cli
           brew test fmu/tap/wordcraft-cli
           brew test fmu/tap/kuna
+          brew test fmu/tap/kuna@1.833
           brew test fmu/tap/jadx-headless-mcp
+          brew test fmu/tap/jadx-headless-mcp@0.7.1
           brew test fmu/tap/ghidra-mcp
           brew test fmu/tap/rea
           brew test fmu/tap/rea-full
+          brew test fmu/tap/partclone
+          brew test fmu/tap/sasquatch
+          brew test fmu/tap/unblob
           if [ "${PARED_INSTALLED:-}" = "1" ]; then
             brew test fmu/tap/pared
           fi
+      - name: Check unblob finds its extractors
+        # --show-external-dependencies exits 1 when an extractor is missing; the
+        # `unblob` wrapper adds the keg-only e2fsprogs and Homebrew sbin to PATH.
+        run: unblob --show-external-dependencies
       - name: Check REA finds its engines
         # The formula's caveats tell users to export these; set them the same way
         # here and let README's audit instructions stay the source of truth.
         run: |
           export GHIDRA_INSTALL_DIR="$(brew --prefix ghidra@12.1)/libexec"
-          export REA_KUNA_COMMAND="$(brew --prefix kuna)/bin/kuna"
-          export REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp)/libexec/jadx-headless-mcp.jar"
+          export REA_KUNA_COMMAND="$(brew --prefix kuna@1.833)/bin/kuna"
+          export REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp@0.7.1)/libexec/jadx-headless-mcp.jar"
           # Doctor exits non-zero as long as any integration is missing (Hopper
           # is a cask and is not installed in CI), so assert on the two engine
           # reports instead of on the aggregate exit code.

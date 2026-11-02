@@ -4,15 +4,20 @@ name: bump upstream
 # the release tag and every sha256 is computed from the downloaded release asset;
 # `scripts/bump/` holds one script per package.
 #
-# Two packages are coupled rather than independent:
+# Three packages are coupled rather than independent:
 #
-#   rea        `scripts/bump/rea.py` pins the rea-agents npm tarball (for `rea`
-#              and the `rea-full` metapackage) AND the engine releases that REA
-#              verifies (jadx-headless-mcp, kuna, and the Ghidra pin it shares
-#              with ghidra@12.1). REA is the authority for those pins, so they
-#              are never bumped on their own.
-#   ghidra-mcp `scripts/bump/ghidra-mcp.py` only accepts a release whose Ghidra
-#              extension was built for the Ghidra keg the tap pins.
+#   rea             `scripts/bump/rea.py` pins the rea-agents npm tarball (for
+#                   `rea` and the `rea-full` metapackage) AND the versioned
+#                   engine kegs REA verifies (jadx-headless-mcp@<release>,
+#                   kuna@<release>, and the Ghidra pin it shares with
+#                   ghidra@12.1). REA is the authority for those pins, so they
+#                   are never bumped on their own.
+#   jadx-headless-mcp, kuna
+#                   the unversioned formulae with those names track upstream's
+#                   latest releases and are bumped by their own scripts; REA is
+#                   pointed at the pinned @ kegs instead.
+#   ghidra-mcp      `scripts/bump/ghidra-mcp.py` only accepts a release whose
+#                   Ghidra extension was built for the Ghidra keg the tap pins.
 #
 # Formula/ghidra@12.1.rb is deliberately absent: it is pinned to one Ghidra
 # release for extensions built against that exact version, so it is bumped by
@@ -27,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, mornye, mpv-app, pared, rea, solidcraft-cli, vectorcraft-cli or wordcraft-cli"
+        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mornye, mpv-app, pared, partclone, rea, sasquatch, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
         required: false
         default: "all"
       tag:
@@ -102,11 +107,23 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/figcraft-cli.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
+      - name: Bump sasquatch
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'sasquatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/sasquatch.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
       - name: Bump solidcraft-cli
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'solidcraft-cli'
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/solidcraft-cli.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump unblob
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'unblob'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/unblob.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump vectorcraft-cli
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'vectorcraft-cli'
@@ -126,6 +143,18 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/iqualize.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
+      - name: Bump jadx-headless-mcp
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'jadx-headless-mcp'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/jadx-headless-mcp.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump kuna
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'kuna'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/kuna.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
       - name: Bump mornye
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'mornye'
         env:
@@ -144,6 +173,12 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/pared.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
+      - name: Bump partclone
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'partclone'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/partclone.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
       - name: Detect changes
         id: changes
         run: |
@@ -160,9 +195,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          packages="$(git diff --cached --name-only \
+          # Only the package files belong in the subject: a Kuna pin move also
+          # renames the formula and updates its references in README/CI, and a
+          # rename appears under its new name because deleted paths are filtered
+          # out.
+          packages="$(git diff --cached --name-only --diff-filter=d \
+            | grep -E '^(Formula|Casks)/' \
             | sed -e 's|.*/||' -e 's/\.rb$//' \
             | paste -sd, - | sed 's/,/, /g')"
+          packages="${packages:-formulae}"
           {
             echo "upstream: bump ${packages}"
             echo
