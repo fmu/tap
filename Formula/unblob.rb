@@ -250,7 +250,10 @@ class Unblob < Formula
       download = resource.cached_download
       raise "#{resource.name}: wheel is not in the download cache" unless download.exist?
 
-      wheels.install download
+      # Homebrew prefixes cached downloads with their SHA-256; pip needs the
+      # original wheel filename.
+      filename = download.basename.to_s.sub(/\A\h{64}--/, "")
+      wheels.install download => filename
     end
     venv.pip_install_and_link wheels.children
 
