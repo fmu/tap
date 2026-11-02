@@ -253,8 +253,12 @@ class Unblob < Formula
     wheels.mkpath
     wheels.install buildpath.glob("*.whl")
     resources.each do |resource|
-      resource.fetch
-      wheels.install resource.cached_download
+      # Already downloaded by `fetch` (or the prefetch); asking the downloader
+      # again here would do a network freshness check inside the build sandbox.
+      download = resource.cached_download
+      raise "#{resource.name}: wheel is not in the download cache" unless download.exist?
+
+      wheels.install download
     end
     venv.pip_install_and_link wheels.children
 
