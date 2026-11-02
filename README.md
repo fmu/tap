@@ -356,7 +356,10 @@ resolves upstream's latest release tag, downloads the release asset(s), computes
 their SHA-256, rewrites the version and checksums, and — when something moved —
 commits, pushes and dispatches the macOS CI run. The commit body lists only the
 packages that moved; a package that was already current is reported in the job
-log but left out of the commit message.
+log but left out of the commit message. The same holds for the engine pin matrix
+[`scripts/bump/rea.py`](scripts/bump/rea.py) verifies: its `matches REA` lines
+reach the commit body only when a bump moved `rea` itself, and a bump that only
+touched an unrelated package keeps them in the job log.
 
 | package | upstream | release tag |
 | --- | --- | --- |

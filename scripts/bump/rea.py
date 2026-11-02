@@ -24,6 +24,12 @@ instead of publishing a tap whose parts disagree.
 Versions live in the URLs, not in `version` stanzas: Homebrew scans them from
 the asset names and `brew audit --strict` rejects a redundant stanza.
 
+Output contract matches the other scripts in this directory: stdout is the bump
+commit's body. The `matches REA` verification lines belong to that body only when
+this run moved the rea pin itself; a bump that leaves rea alone reports them on
+stderr for the job log instead, so a gbrain-only run does not commit a pin matrix
+that nothing in the run touched.
+
 Usage:
   python3 scripts/bump/rea.py            # pin the latest REA release
   python3 scripts/bump/rea.py --check    # verify the current pins, write nothing
@@ -186,8 +192,17 @@ def pin_kuna(version: str) -> None:
     write(KUNA_FORMULA, text)
 
 
-def _check_pins(rea_version: str, pins: dict[str, str]) -> bool:
-    """Compare the tap's engine pins with the ones a REA release verifies."""
+def _check_pins(rea_version: str, pins: dict[str, str], *, commit_body: bool = True) -> bool:
+    """Compare the tap's engine pins with the ones a REA release verifies.
+
+    Agreement lines go to stdout, which the bump workflow commits as the bump
+    message's body, only when `commit_body` is set: the bump passes it when this
+    run moved the rea pin, because only then do the lines describe a change the
+    commit makes. Otherwise they are job-log status on stderr, like the
+    `already at` lines, and a package that disagrees is always a job-log error
+    because a disagreement fails the run before anything is committed.
+    """
+    stream = sys.stdout if commit_body else sys.stderr
     rows = (
         ("rea", rea_version, rea_version),
         ("jadx-headless-mcp", _jadx_pin(), pins["jadx-headless-mcp"]),
@@ -197,10 +212,10 @@ def _check_pins(rea_version: str, pins: dict[str, str]) -> bool:
     agreed = True
     for package, pinned, verified in rows:
         if pinned == verified:
-            print(f"{package}: {pinned} (matches REA {rea_version})")
+            print(f"{package}: {pinned} (matches REA {rea_version})", file=stream)
             continue
         agreed = False
-        print(f"{package}: {pinned} but REA {rea_version} verifies {verified}")
+        print(f"{package}: {pinned} but REA {rea_version} verifies {verified}", file=sys.stderr)
     return agreed
 
 
@@ -247,11 +262,15 @@ def main() -> None:
         pin_kuna(pins["kuna"])
     report("kuna", current_kuna, pins["kuna"])
 
-    if current_rea != version:
+    # The pin matrix is the commit's evidence only when this run moved rea: an
+    # unrelated bump (say gbrain) still runs this script and would otherwise
+    # decorate its commit message with four `matches REA` lines it never touched.
+    rea_moved = current_rea != version
+    if rea_moved:
         pin_rea(version)
     report("rea", current_rea, version)
 
-    if not _check_pins(version, pins):
+    if not _check_pins(version, pins, commit_body=rea_moved):
         fail("the re-pinned formulae still disagree with the REA release")
 
 
