@@ -36,6 +36,7 @@ jobs:
             fmu/tap/gbrain-embed \
             fmu/tap/designcraft-cli \
             fmu/tap/figcraft-cli \
+            fmu/tap/solidcraft-cli \
             fmu/tap/vectorcraft-cli \
             fmu/tap/wordcraft-cli \
             fmu/tap/pared \
@@ -57,6 +58,7 @@ jobs:
           brew install fmu/tap/gbrain
           brew install fmu/tap/designcraft-cli
           brew install fmu/tap/figcraft-cli
+          brew install fmu/tap/solidcraft-cli
           brew install fmu/tap/vectorcraft-cli
           brew install fmu/tap/wordcraft-cli
           # Pared is macOS 27 only; installing it on an older runner fails by
@@ -93,6 +95,7 @@ jobs:
           brew test fmu/tap/gbrain
           brew test fmu/tap/designcraft-cli
           brew test fmu/tap/figcraft-cli
+          brew test fmu/tap/solidcraft-cli
           brew test fmu/tap/vectorcraft-cli
           brew test fmu/tap/wordcraft-cli
           brew test fmu/tap/kuna
