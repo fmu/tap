@@ -357,8 +357,9 @@ brew uninstall qwen3-embed
 
 The formula tracks the tagged source release of
 [fmu/qwen3-embed](https://github.com/fmu/qwen3-embed) and is bumped by hand
-when that repository is tagged. The current pin is `v0.4.0` (the release that
-splits the gbrain integration out of `setup` into `setup-gbrain`).
+when that repository is tagged. The current pin is `v0.4.1`: `v0.4.0` split
+the gbrain integration out of `setup` into `setup-gbrain`, and `v0.4.1`
+corrects the tap name in the project README.
 
 ### designcraft-cli
 

@@ -1,7 +1,7 @@
 class Qwen3Embed < Formula
   desc "On-demand local Qwen3 embeddings and reranking, served by llama.cpp"
   homepage "https://github.com/fmu/qwen3-embed"
-  url "https://github.com/fmu/qwen3-embed.git", tag: "v0.4.0", revision: "dae707eabb80d3e7df39b639187d0a53a346f334"
+  url "https://github.com/fmu/qwen3-embed.git", tag: "v0.4.1", revision: "4083272977b0ece313a3e79adaa575ddc3f67d3a"
   head "https://github.com/fmu/qwen3-embed.git", branch: "main"
 
   depends_on "bun"
