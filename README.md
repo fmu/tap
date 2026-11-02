@@ -22,6 +22,7 @@ brew install rea          # the reverse-engineering MCP server and CLI
 brew install ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
 brew install gbrain gbrain-embed
 brew install designcraft-cli  # the headless DesignCraft engine (matches the app cask)
+brew install figcraft-cli  # the headless FigCraft engine (matches the app cask)
 brew install vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install wordcraft-cli  # the headless WordCraft engine (matches the app cask)
 brew install --cask iqualize mornye mpv-app
@@ -250,6 +251,38 @@ from [`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), so
 non-Latin scripts are set in their intended faces instead of falling back to
 system fonts. Upstream ships no Linux CLI binary, so the formula is macOS-only.
 
+### figcraft-cli
+
+The headless half of [FigCraft](https://getartcraft.com/apps/figcraft), the
+interface design and prototyping tool that is the `figcraft` cask in
+homebrew-cask. Upstream publishes the CLI as a self-contained universal macOS
+binary next to the app's own artifacts, so the formula installs that release
+asset instead of compiling the engine with Rust: `brew install` and
+`brew upgrade` download it rather than spending several minutes in
+`cargo install`. It runs the app's own document model, renderer and exporters
+without a window:
+
+```bash
+brew install figcraft-cli
+figcraft-cli --version
+figcraft-cli commands                                 # every command with its parameters
+figcraft-cli info artwork.figcraft                    # pages, node and style counts
+figcraft-cli render artwork.figcraft -o page.png --scale 2
+figcraft-cli convert artwork.figcraft artwork.pdf     # .figcraft, .json, .svg, .png, .pdf, .fig, .penpot
+figcraft-cli run build-card.json --out card.figcraft  # a command script, headless
+figcraft-cli mcp                                      # MCP server over stdio
+```
+
+The CLI and the app are built from one upstream tag: the formula was added at
+`0.14.0`, the version the `figcraft` cask is on, and the scheduled bump moves
+it to the latest upstream release — the same release homebrew-cask's autobump
+puts the app on. The release binary is Developer ID signed, notarized and
+universal (arm64 and x86_64), and unlike a source build it embeds the optional
+extra fonts from
+[`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), so
+non-Latin text is set in its intended faces instead of falling back to system
+fonts. Upstream ships no Linux CLI binary, so the formula is macOS-only.
+
 ### vectorcraft-cli
 
 The headless half of [VectorCraft](https://getartcraft.com/apps/vectorcraft),
@@ -432,6 +465,7 @@ touched an unrelated package keeps them in the job log.
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
 | `designcraft-cli` | `storytold/designcraft` | `v*` (the tag the `designcraft` cask is on) |
+| `figcraft-cli` | `storytold/figcraft` | `v*` (the tag the `figcraft` cask is on) |
 | `vectorcraft-cli` | `storytold/vectorcraft` | `v*` (the tag the `vectorcraft` cask is on) |
 | `wordcraft-cli` | `storytold/wordcraft` | `v*` (the tag the `wordcraft` cask is on) |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
