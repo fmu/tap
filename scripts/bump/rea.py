@@ -6,16 +6,21 @@ one JADX headless MCP, one Kuna and one Ghidra build, and reports every other
 build as unverified, so these packages are bumped together instead of tracking
 their own upstream latest:
 
-  Formula/rea.rb                rea-agents npm tarball
-  Formula/rea-full.rb           the same tarball, for the integration metapackage
-  Formula/jadx-headless-mcp.rb  src/android/JadxRelease.ts     JADX_RELEASE.version
-  Formula/kuna.rb               src/kuna/KunaRelease.ts        KUNA_VERIFIED_VERSION
-  Formula/ghidra@12.1.rb        src/ghidra/GhidraReleasePolicy.ts
-                                                             SUPPORTED_GHIDRA_VERSION
+  Formula/rea.rb                     rea-agents npm tarball
+  Formula/rea-full.rb                the same tarball, for the integration metapackage
+  Formula/jadx-headless-mcp@<v>.rb   src/android/JadxRelease.ts  JADX_RELEASE.version
+  Formula/kuna@<v>.rb                src/kuna/KunaRelease.ts     KUNA_VERIFIED_VERSION
+  Formula/ghidra@12.1.rb             src/ghidra/GhidraReleasePolicy.ts
+                                     SUPPORTED_GHIDRA_VERSION
 
 The pins are read from the released tag's source, not from upstream's main
 branch, so an unpublished commit that already moved Kuna to a newer release
-cannot make the tap advertise a combination REA never shipped.
+cannot make the tap advertise a combination REA never shipped. The JADX and
+Kuna kegs are versioned and keg-only (`jadx-headless-mcp@<release>`,
+`kuna@<release>`), so when REA starts verifying a different release this script
+renames the formula and updates every reference to it instead of mutating a
+name that no longer describes the pin. The unversioned formulae with those
+names track upstream's latest releases and are bumped by their own scripts.
 
 The Ghidra pin is checked but never rewritten. Moving it means a new Ghidra keg
 and a GhidraMCP extension built for that exact release (see
@@ -42,6 +47,7 @@ honours RELEASE_TAG like the other scripts in this directory.
 
 from __future__ import annotations
 
+import pathlib
 import re
 import sys
 
@@ -64,8 +70,11 @@ NPM_TARBALL = "https://registry.npmjs.org/rea-agents/-/rea-agents-{version}.tgz"
 
 REA_FORMULA = "Formula/rea.rb"
 REA_FULL_FORMULA = "Formula/rea-full.rb"
-JADX_FORMULA = "Formula/jadx-headless-mcp.rb"
-KUNA_FORMULA = "Formula/kuna.rb"
+JADX_FORMULA_PREFIX = "Formula/jadx-headless-mcp@"
+JADX_KEG_GLOB = "Formula/jadx-headless-mcp@*.rb"
+KUNA_FORMULA_PREFIX = "Formula/kuna@"
+KUNA_KEG_GLOB = "Formula/kuna@*.rb"
+CI_WORKFLOW = ".github/workflows/ci.yml"
 GHIDRA_FORMULA = "Formula/ghidra@12.1.rb"
 
 JADX_REPO = "1013503897/jadx-headless-mcp"
@@ -129,20 +138,22 @@ def _rea_full_pin() -> str:
     )
 
 
+def _versioned_formula(pattern: str) -> str:
+    """The versioned keg the pattern names; there is exactly one."""
+    paths = sorted(pathlib.Path(".").glob(pattern))
+    if len(paths) != 1:
+        fail(f"expected exactly one {pattern}, found {[str(path) for path in paths]}")
+    return str(paths[0])
+
+
 def _jadx_pin() -> str:
-    return pinned_version(
-        read(JADX_FORMULA),
-        r'jadx-headless-mcp-([^/"]+)-all\.jar',
-        JADX_FORMULA,
-    )
+    formula = _versioned_formula(JADX_KEG_GLOB)
+    return pinned_version(read(formula), r'jadx-headless-mcp-([^/"]+)-all\.jar', formula)
 
 
 def _kuna_pin() -> str:
-    return pinned_version(
-        read(KUNA_FORMULA),
-        r'kuna-v([^/"]+)-macos-arm64\.tar\.gz',
-        KUNA_FORMULA,
-    )
+    formula = _versioned_formula(KUNA_KEG_GLOB)
+    return pinned_version(read(formula), r'kuna-v([^/"]+)-macos-arm64\.tar\.gz', formula)
 
 
 def _ghidra_pin() -> str:
@@ -169,27 +180,140 @@ def pin_rea(version: str) -> None:
     _pin_rea_tarball(REA_FULL_FORMULA, version, sha256)
 
 
-def pin_jadx(version: str) -> None:
-    text = read(JADX_FORMULA)
+def _formula_class_suffix(version: str) -> str:
+    """Homebrew class for `name@<version>`: drop punctuation, e.g. 0.7.1 -> 071."""
+    return re.sub(r"[^A-Za-z0-9]", "", version)
+
+
+def _renamed_versioned_formula(
+    formula: str,
+    prefix: str,
+    class_prefix: str,
+    old: str,
+    new: str,
+) -> tuple[pathlib.Path, str]:
+    """Return the new keg path and content, without writing anything."""
+    new_path = pathlib.Path(f"{prefix}{new}.rb")
+    if new_path.exists():
+        fail(f"{new_path} already exists; cannot rename {formula} to {new}")
+
+    text = read(formula)
+    old_class = f"class {class_prefix}{_formula_class_suffix(old)} "
+    new_class = f"class {class_prefix}{_formula_class_suffix(new)} "
+    if text.count(old_class) != 1:
+        fail(f"{formula}: expected one `{old_class.strip()}`, found {text.count(old_class)}")
+    return new_path, text.replace(old_class, new_class)
+
+
+def _jadx_reference_updates(old: str, new: str) -> dict[str, str]:
+    """Return the updated rea.rb, README.md and CI content, without writing.
+
+    `jadx-headless-mcp@<release>` appears in rea.rb (header table, depends_on,
+    caveats, test), README (pin table, install commands, sections) and CI
+    (audit/install/test lists, REA_JADX_MCP_JAR, doctor version check).
+    """
+    updates: dict[str, str] = {}
+
+    rea = read(REA_FORMULA)
+    rea, count = re.subn(
+        r"(#\s+jadx-headless-mcp@)\S+(\s+)\S+(\s+src/android/JadxRelease\.ts)",
+        lambda match: f"{match.group(1)}{new}{match.group(2)}{new}{match.group(3)}",
+        rea,
+    )
+    if count != 1:
+        fail(f"{REA_FORMULA}: expected one jadx pin line, found {count}")
+    if f"jadx-headless-mcp@{old}" not in rea:
+        fail(f"{REA_FORMULA}: no references to jadx-headless-mcp@{old} left to update")
+    updates[REA_FORMULA] = rea.replace(
+        f"jadx-headless-mcp@{old}", f"jadx-headless-mcp@{new}"
+    )
+
+    readme = read("README.md")
+    readme, count = re.subn(
+        r"(\| `jadx-headless-mcp@)[^`]+`(\s+\| )\S+( \| `src/android/JadxRelease\.ts` \|)",
+        lambda match: f"{match.group(1)}{new}`{match.group(2)}{new}{match.group(3)}",
+        readme,
+    )
+    if count != 1:
+        fail(f"README.md: expected one jadx pin row, found {count}")
+    if f"jadx-headless-mcp@{old}" not in readme:
+        fail(f"README.md: no references to jadx-headless-mcp@{old} left to update")
+    updates["README.md"] = readme.replace(
+        f"jadx-headless-mcp@{old}", f"jadx-headless-mcp@{new}"
+    )
+
+    ci = read(CI_WORKFLOW)
+    if f'("jadx", "{old}")' not in ci:
+        fail(f"{CI_WORKFLOW}: expected the jadx doctor pin {old}, found none")
+    if f"jadx-headless-mcp@{old}" not in ci:
+        fail(f"{CI_WORKFLOW}: no references to jadx-headless-mcp@{old} left to update")
+    ci = ci.replace(f'("jadx", "{old}")', f'("jadx", "{new}")')
+    updates[CI_WORKFLOW] = ci.replace(
+        f"jadx-headless-mcp@{old}", f"jadx-headless-mcp@{new}"
+    )
+    return updates
+
+
+def _kuna_reference_updates(old: str, new: str) -> dict[str, str]:
+    """Return the updated rea.rb, README.md and CI content, without writing.
+
+    `kuna@<release>` appears in rea.rb (header table, depends_on, caveats, test),
+    README (pin table, install commands, section) and CI (audit/install/test
+    lists, REA_KUNA_COMMAND, doctor version check).
+    """
+    updates: dict[str, str] = {}
+
+    rea = read(REA_FORMULA)
+    rea, count = re.subn(
+        r"(#\s+kuna@)\S+(\s+)\S+(\s+src/kuna/KunaRelease\.ts)",
+        lambda match: f"{match.group(1)}{new}{match.group(2)}{new}{match.group(3)}",
+        rea,
+    )
+    if count != 1:
+        fail(f"{REA_FORMULA}: expected one kuna pin line, found {count}")
+    if f"kuna@{old}" not in rea or f'assert_match "kuna {old}"' not in rea:
+        fail(f"{REA_FORMULA}: no references to kuna@{old} left to update")
+    rea = rea.replace(f"kuna@{old}", f"kuna@{new}")
+    rea = rea.replace(f'assert_match "kuna {old}"', f'assert_match "kuna {new}"')
+    updates[REA_FORMULA] = rea
+
+    readme = read("README.md")
+    readme, count = re.subn(
+        r"(\| `kuna@)[^`]+`(\s+\| )\S+( \| `src/kuna/KunaRelease\.ts` \|)",
+        lambda match: f"{match.group(1)}{new}`{match.group(2)}{new}{match.group(3)}",
+        readme,
+    )
+    if count != 1:
+        fail(f"README.md: expected one kuna pin row, found {count}")
+    if f"kuna@{old}" not in readme:
+        fail(f"README.md: no references to kuna@{old} left to update")
+    updates["README.md"] = readme.replace(f"kuna@{old}", f"kuna@{new}")
+
+    ci = read(CI_WORKFLOW)
+    if f'("kuna-installation", "{old}")' not in ci:
+        fail(f"{CI_WORKFLOW}: expected the kuna-installation pin {old}, found none")
+    if f"kuna@{old}" not in ci:
+        fail(f"{CI_WORKFLOW}: no references to kuna@{old} left to update")
+    ci = ci.replace(f'("kuna-installation", "{old}")', f'("kuna-installation", "{new}")')
+    updates[CI_WORKFLOW] = ci.replace(f"kuna@{old}", f"kuna@{new}")
+    return updates
+
+
+def _rewrite_jadx_urls(text: str, formula: str, version: str, shas: dict[str, str]) -> str:
+    asset = f"jadx-headless-mcp-{version}-all.jar"
     text, count = re.subn(
         r"https://github\.com/"
         + re.escape(JADX_REPO)
         + r"/releases/download/v[^\"/]+/jadx-headless-mcp-[^\"/]+-all\.jar",
-        f"https://github.com/{JADX_REPO}/releases/download/v{version}/"
-        f"jadx-headless-mcp-{version}-all.jar",
+        f"https://github.com/{JADX_REPO}/releases/download/v{version}/{asset}",
         text,
     )
     if count != 1:
-        fail(f"{JADX_FORMULA}: expected one release JAR URL, found {count}")
-    sha256 = asset_sha256(JADX_REPO, f"v{version}", f"jadx-headless-mcp-{version}-all.jar")
-    text = replace_sha_after_url(
-        text, f"jadx-headless-mcp-{version}-all.jar", sha256, JADX_FORMULA
-    )
-    write(JADX_FORMULA, text)
+        fail(f"{formula}: expected one release JAR URL, found {count}")
+    return replace_sha_after_url(text, asset, shas[asset], formula)
 
 
-def pin_kuna(version: str) -> None:
-    text = read(KUNA_FORMULA)
+def _rewrite_kuna_urls(text: str, formula: str, version: str, shas: dict[str, str]) -> str:
     for platform in KUNA_PLATFORMS:
         asset = f"kuna-v{version}-{platform}.tar.gz"
         text, count = re.subn(
@@ -202,10 +326,81 @@ def pin_kuna(version: str) -> None:
             text,
         )
         if count != 1:
-            fail(f"{KUNA_FORMULA}: expected one {platform} URL, found {count}")
-        sha256 = asset_sha256(KUNA_REPO, f"v{version}", asset)
-        text = replace_sha_after_url(text, asset, sha256, KUNA_FORMULA)
-    write(KUNA_FORMULA, text)
+            fail(f"{formula}: expected one {platform} URL, found {count}")
+        text = replace_sha_after_url(text, asset, shas[asset], formula)
+    return text
+
+
+def _install_versioned_keg(
+    *,
+    glob: str,
+    prefix: str,
+    class_prefix: str,
+    pin_regex: str,
+    version: str,
+    repo: str,
+    assets: list[str],
+    reference_updates,
+    rewrite_urls,
+) -> None:
+    """Re-pin one versioned keg, renaming it when the pin moves.
+
+    Assets and checksums are resolved before the tree is touched, and the new
+    formula content plus the rea.rb/README/CI references are computed in memory
+    first, so a failed download or a stale reference pattern leaves the checkout
+    unchanged.
+    """
+    formula = _versioned_formula(glob)
+    current = pinned_version(read(formula), pin_regex, formula)
+    shas = {asset: asset_sha256(repo, f"v{version}", asset) for asset in assets}
+
+    new_path = pathlib.Path(formula)
+    renamed_text: str | None = None
+    updates: dict[str, str] = {}
+    if current != version:
+        new_path, renamed_text = _renamed_versioned_formula(
+            formula, prefix, class_prefix, current, version
+        )
+        updates = reference_updates(current, version)
+
+    text = renamed_text if renamed_text is not None else read(formula)
+    text = rewrite_urls(text, formula, version, shas)
+
+    if renamed_text is not None:
+        for path, content in updates.items():
+            write(path, content)
+        new_path.write_text(text, encoding="utf-8")
+        pathlib.Path(formula).unlink()
+    else:
+        write(formula, text)
+
+
+def pin_jadx(version: str) -> None:
+    _install_versioned_keg(
+        glob=JADX_KEG_GLOB,
+        prefix=JADX_FORMULA_PREFIX,
+        class_prefix="JadxHeadlessMcpAT",
+        pin_regex=r'jadx-headless-mcp-([^/"]+)-all\.jar',
+        version=version,
+        repo=JADX_REPO,
+        assets=[f"jadx-headless-mcp-{version}-all.jar"],
+        reference_updates=_jadx_reference_updates,
+        rewrite_urls=_rewrite_jadx_urls,
+    )
+
+
+def pin_kuna(version: str) -> None:
+    _install_versioned_keg(
+        glob=KUNA_KEG_GLOB,
+        prefix=KUNA_FORMULA_PREFIX,
+        class_prefix="KunaAT",
+        pin_regex=r'kuna-v([^/"]+)-macos-arm64\.tar\.gz',
+        version=version,
+        repo=KUNA_REPO,
+        assets=[f"kuna-v{version}-{platform}.tar.gz" for platform in KUNA_PLATFORMS],
+        reference_updates=_kuna_reference_updates,
+        rewrite_urls=_rewrite_kuna_urls,
+    )
 
 
 def _check_pins(rea_version: str, pins: dict[str, str], *, commit_body: bool = True) -> bool:
@@ -243,9 +438,10 @@ def check() -> None:
         return
     fail(
         "the tap no longer matches the engines REA verifies; run "
-        "`python3 scripts/bump/rea.py` to re-pin jadx-headless-mcp, kuna and "
-        "rea-full with rea, and update the Ghidra keg (plus ghidra-mcp) by hand "
-        "when REA's verified Ghidra release moves"
+        f"`python3 scripts/bump/rea.py` to re-pin the jadx-headless-mcp@"
+        f"{pins['jadx-headless-mcp']} and kuna@{pins['kuna']} kegs and rea-full "
+        "with rea, and update the Ghidra keg (plus ghidra-mcp) by hand when "
+        "REA's verified Ghidra release moves"
     )
 
 

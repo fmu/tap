@@ -7,16 +7,20 @@
 # as unverified, so the engines are pinned together with REA rather than tracked
 # individually:
 #
-#   jadx-headless-mcp 0.7.1   src/android/JadxRelease.ts (JADX_RELEASE.version)
-#   kuna              1.833   src/kuna/KunaRelease.ts (KUNA_VERIFIED_VERSION)
-#   ghidra            12.1.4  src/ghidra/GhidraReleasePolicy.ts
-#                             (SUPPORTED_GHIDRA_VERSION, via ghidra@12.1)
+#   jadx-headless-mcp@0.7.1  0.7.1   src/android/JadxRelease.ts
+#                                    (JADX_RELEASE.version)
+#   kuna@1.833               1.833   src/kuna/KunaRelease.ts
+#                                    (KUNA_VERIFIED_VERSION)
+#   ghidra                   12.1.4  src/ghidra/GhidraReleasePolicy.ts
+#                                    (SUPPORTED_GHIDRA_VERSION, via ghidra@12.1)
 #
 # Do not bump those pins by hand: `scripts/bump/rea.py` reads them from the REA
 # release tag, re-pins this formula, the `rea-full` metapackage and both engine
 # formulae in one commit, and refuses to build a tap whose Ghidra pin no longer
 # matches REA (a Ghidra move also needs a ghidra-mcp extension built for the new
-# release, which no bump script can create). Hopper is a cask in homebrew-cask
+# release, which no bump script can create). A JADX or Kuna move renames its keg
+# and every `jadx-headless-mcp@<release>`/`kuna@<release>` reference with it.
+# Hopper is a cask in homebrew-cask
 # and is therefore an optional provider, not a dependency. Formula/rea-full.rb
 # is the metapackage that adds every optional integration Homebrew packages.
 #
@@ -32,15 +36,17 @@ class Rea < Formula
   sha256 "8d542ec76a9cb350584b60a6c9c088706ff812d5bb5b094c20c95b6dc25698bb"
   license "MIT"
 
-  # The analysis engines. ghidra@12.1 is keg-only and stays on the release REA
-  # verifies; jadx-headless-mcp and kuna are pinned to the releases above.
+  # The analysis engines, all keg-only versioned formulae pinned to the releases
+  # above. The unversioned jadx-headless-mcp and kuna formulae track upstream's
+  # latest releases for standalone use, so REA must point at these kegs
+  # explicitly (see the caveats and test).
   #
-  # ghidra@12.1 is named with its tap because several taps may ship a formula
-  # with that name (including this machine's fmu/config-nix), and an unqualified
+  # They are named with their tap because several taps may ship formulae with
+  # those names (including this machine's fmu/config-nix), and an unqualified
   # dependency would then refuse to resolve.
   depends_on "fmu/tap/ghidra@12.1"
-  depends_on "jadx-headless-mcp"
-  depends_on "kuna"
+  depends_on "fmu/tap/jadx-headless-mcp@0.7.1"
+  depends_on "fmu/tap/kuna@1.833"
 
   # REA itself runs on Node (engines: ^22.23.4 || ^24.22.1 || >=26.12.1) and
   # spawns the Ghidra and JADX bridges as Java processes.
@@ -63,8 +69,8 @@ class Rea < Formula
       so GUI clients inherit them:
 
         export GHIDRA_INSTALL_DIR="#{formula_opt_libexec("ghidra@12.1")}"
-        export REA_KUNA_COMMAND="#{formula_opt_bin("kuna")}/kuna"
-        export REA_JADX_MCP_JAR="#{formula_opt_libexec("jadx-headless-mcp")}/jadx-headless-mcp.jar"
+        export REA_KUNA_COMMAND="#{formula_opt_bin("kuna@1.833")}/kuna"
+        export REA_JADX_MCP_JAR="#{formula_opt_libexec("jadx-headless-mcp@0.7.1")}/jadx-headless-mcp.jar"
 
       `rea doctor --json` reports every integration and what is still missing.
 
@@ -96,8 +102,9 @@ class Rea < Formula
         brew install rizin
         export REA_RIZIN_COMMAND="$(brew --prefix rizin)/bin/rizin"
 
-      gdb, objdump, apktool, binwalk, tshark, WABT, sigrok and mitmdump follow
-      the same pattern; `rea doctor --json` lists each one with its setting.
+      gdb, objdump, apktool, binwalk, unblob, tshark, WABT, sigrok and mitmdump
+      follow the same pattern; `rea doctor --json` lists each one with its
+      setting.
     EOS
   end
 
@@ -106,8 +113,8 @@ class Rea < Formula
 
     # The engines are pinned together with REA: a different release is reported
     # as unverified, so assert the exact set scripts/bump/rea.py writes.
-    assert_match "kuna 1.833", shell_output("#{formula_opt_bin("kuna")}/kuna --version")
-    assert_path_exists formula_opt_libexec("jadx-headless-mcp")/"jadx-headless-mcp.jar"
+    assert_match "kuna 1.833", shell_output("#{formula_opt_bin("kuna@1.833")}/kuna --version")
+    assert_path_exists formula_opt_libexec("jadx-headless-mcp@0.7.1")/"jadx-headless-mcp.jar"
     assert_path_exists formula_opt_libexec("ghidra@12.1")/"Ghidra/application.properties"
   end
 end
