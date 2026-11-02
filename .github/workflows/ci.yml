@@ -44,7 +44,8 @@ jobs:
             fmu/tap/jadx-headless-mcp \
             fmu/tap/kuna \
             fmu/tap/ghidra-mcp \
-            fmu/tap/rea
+            fmu/tap/rea \
+            fmu/tap/rea-full
       - name: Audit casks
         run: |
           brew audit --strict --cask \
@@ -72,12 +73,13 @@ jobs:
           fi
       - name: Install the reverse-engineering toolchain
         # Order matters only for readability: ghidra-mcp pulls the pinned
-        # ghidra@12.1 (and builds its native components), rea pulls the engines.
+        # ghidra@12.1 (and builds its native components); rea-full pulls rea,
+        # the engines rea verifies, and the optional integrations Homebrew has.
         run: |
           brew install fmu/tap/kuna
           brew install fmu/tap/jadx-headless-mcp
           brew install fmu/tap/ghidra-mcp
-          brew install fmu/tap/rea
+          brew install fmu/tap/rea-full
       - name: Install casks
         run: |
           brew install --cask \
@@ -104,6 +106,7 @@ jobs:
           brew test fmu/tap/jadx-headless-mcp
           brew test fmu/tap/ghidra-mcp
           brew test fmu/tap/rea
+          brew test fmu/tap/rea-full
           if [ "${PARED_INSTALLED:-}" = "1" ]; then
             brew test fmu/tap/pared
           fi

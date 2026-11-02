@@ -18,6 +18,7 @@ derives the URL from the tap name:
 
 ```bash
 brew install fmu/tap/rea          # the reverse-engineering MCP server and CLI
+brew install fmu/tap/rea-full     # REA plus every integration Homebrew packages
 brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
 brew install fmu/tap/gbrain fmu/tap/gbrain-embed
 brew install fmu/tap/designcraft-cli  # the headless DesignCraft engine (matches the app cask)
@@ -75,13 +76,59 @@ brew install --cask hopper-disassembler
 Rizin is the other optional integration this tap can supply
 (`brew install rizin`, then `REA_RIZIN_COMMAND`); gdb, objdump, apktool,
 binwalk, tshark, WABT, sigrok, mitmdump, IDA, JEB and Cutter are detected from
-`PATH` or their own `REA_*` setting and are not dependencies. `rea doctor
---json` lists each integration with its setting.
+`PATH` or their own `REA_*` setting and are not dependencies of this formula.
+`brew install fmu/tap/rea-full` adds the ones Homebrew packages (see below), and
+`rea doctor --json` lists each integration with its setting.
 
 Java note: `ghidra@12.1` brings the `openjdk@21` that REA's Ghidra bridge is
 verified against, while `openjdk` (latest) serves the JADX bridge. REA picks a
 JDK from `JAVA_HOME`, then `PATH`, then Homebrew's `opt/openjdk`; if doctor
 complains, export `JAVA_HOME` for `openjdk@21` before `rea setup`.
+
+### rea-full
+
+`rea-full` is the one-command way to get REA with every optional integration
+Homebrew can install, so `rea doctor` finds them instead of reporting them
+missing. It depends on `rea` and on the formulae below:
+
+| integration | formula | REA setting |
+| --- | --- | --- |
+| debugger and Cutter bridge | `rizin` | `REA_RIZIN_COMMAND` |
+| gdb | `gdb` | `REA_GDB_COMMAND` |
+| Android APK unpacking | `apktool` | `REA_APKTOOL_COMMAND` |
+| firmware images | `binwalk` | `REA_BINWALK_COMMAND` |
+| capture dissection | `wireshark` (`tshark`, `capinfos`) | `REA_TSHARK_COMMAND` |
+| WebAssembly | `wabt` (`wasm2wat` …) | `REA_WABT_BIN_DIRECTORY` |
+| signal decoding | `sigrok-cli` | `REA_SIGROK_COMMAND` |
+
+`rea` itself brings the engines (`jadx-headless-mcp`, `kuna` and
+`ghidra@12.1`); the standalone `ghidra-mcp` server is not a REA provider, so
+it is not part of the bundle.
+
+```bash
+brew install fmu/tap/rea-full
+rea doctor --json
+```
+
+`objdump` needs no dependency: the Command Line Tools' `/usr/bin/objdump` is
+what REA looks for by default, and GNU binutils would not do because it is
+keg-only and prefixes its tools (`gobjdump`). The remaining providers cannot be
+formula dependencies — Hopper, Cutter and mitmproxy are casks, and unblob, IDA
+and JEB are not in Homebrew at all:
+
+```bash
+brew install --cask hopper-disassembler cutter mitmproxy
+```
+
+WABT wants an absolute directory rather than a `PATH` entry, so export it once
+(the caveats repeat this):
+
+```bash
+export REA_WABT_BIN_DIRECTORY="$(brew --prefix wabt)/bin"
+```
+
+`rea-full` is pinned with `rea` by `scripts/bump/rea.py`, so the metapackage and
+the CLI cannot drift apart.
 
 ### jadx-headless-mcp
 
@@ -514,7 +561,7 @@ touched an unrelated package keeps them in the job log.
 
 | package | upstream | release tag |
 | --- | --- | --- |
-| `rea` (+ `jadx-headless-mcp`, `kuna`) | `morluto/rea` | `rea-agents-<version>` |
+| `rea` (+ `rea-full`, `jadx-headless-mcp`, `kuna`) | `morluto/rea` | `rea-agents-<version>` |
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |
 | `gbrain` | `garrytan/gbrain` | `v*` |
 | `designcraft-cli` | `storytold/designcraft` | `v*` (the tag the `designcraft` cask is on) |
@@ -534,7 +581,8 @@ Two packages are coupled rather than independent:
   `rea-agents` npm tarball and reads the engine releases the new tag verifies
   from its source (`src/android/JadxRelease.ts`, `src/kuna/KunaRelease.ts`,
   `src/ghidra/GhidraReleasePolicy.ts`), then re-pins `Formula/rea.rb`,
-  `Formula/jadx-headless-mcp.rb` and `Formula/kuna.rb` in one commit. A Ghidra
+  `Formula/rea-full.rb`, `Formula/jadx-headless-mcp.rb` and
+  `Formula/kuna.rb` in one commit. A Ghidra
   move also needs a new `ghidra@12.1` keg and a GhidraMCP extension built for
   that release, so the script fails instead of writing a tap whose pins disagree.
 - `ghidra-mcp` only accepts a release whose extension targets the Ghidra keg the

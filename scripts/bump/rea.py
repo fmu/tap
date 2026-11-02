@@ -7,6 +7,7 @@ build as unverified, so these packages are bumped together instead of tracking
 their own upstream latest:
 
   Formula/rea.rb                rea-agents npm tarball
+  Formula/rea-full.rb           the same tarball, for the integration metapackage
   Formula/jadx-headless-mcp.rb  src/android/JadxRelease.ts     JADX_RELEASE.version
   Formula/kuna.rb               src/kuna/KunaRelease.ts        KUNA_VERIFIED_VERSION
   Formula/ghidra@12.1.rb        src/ghidra/GhidraReleasePolicy.ts
@@ -62,6 +63,7 @@ TAG_PREFIX = "rea-agents-"
 NPM_TARBALL = "https://registry.npmjs.org/rea-agents/-/rea-agents-{version}.tgz"
 
 REA_FORMULA = "Formula/rea.rb"
+REA_FULL_FORMULA = "Formula/rea-full.rb"
 JADX_FORMULA = "Formula/jadx-headless-mcp.rb"
 KUNA_FORMULA = "Formula/kuna.rb"
 GHIDRA_FORMULA = "Formula/ghidra@12.1.rb"
@@ -119,6 +121,14 @@ def _rea_pin() -> str:
     )
 
 
+def _rea_full_pin() -> str:
+    return pinned_version(
+        read(REA_FULL_FORMULA),
+        r'registry\.npmjs\.org/rea-agents/-/rea-agents-([^"]+)\.tgz',
+        REA_FULL_FORMULA,
+    )
+
+
 def _jadx_pin() -> str:
     return pinned_version(
         read(JADX_FORMULA),
@@ -139,18 +149,24 @@ def _ghidra_pin() -> str:
     return pinned_version(read(GHIDRA_FORMULA), r'(?m)^\s*version "([^"]+)"$', GHIDRA_FORMULA)
 
 
-def pin_rea(version: str) -> None:
-    text = read(REA_FORMULA)
+def _pin_rea_tarball(formula: str, version: str, sha256: str) -> None:
+    text = read(formula)
     text, count = re.subn(
         r"https://registry\.npmjs\.org/rea-agents/-/rea-agents-[^\"]+\.tgz",
         NPM_TARBALL.format(version=version),
         text,
     )
     if count != 1:
-        fail(f"{REA_FORMULA}: expected one npm tarball URL, found {count}")
+        fail(f"{formula}: expected one npm tarball URL, found {count}")
+    text = replace_sha_after_url(text, f"rea-agents-{version}.tgz", sha256, formula)
+    write(formula, text)
+
+
+def pin_rea(version: str) -> None:
+    """Pin Formula/rea.rb and the rea-full metapackage to one release."""
     sha256 = download_sha256(NPM_TARBALL.format(version=version))
-    text = replace_sha_after_url(text, f"rea-agents-{version}.tgz", sha256, REA_FORMULA)
-    write(REA_FORMULA, text)
+    _pin_rea_tarball(REA_FORMULA, version, sha256)
+    _pin_rea_tarball(REA_FULL_FORMULA, version, sha256)
 
 
 def pin_jadx(version: str) -> None:
@@ -205,6 +221,7 @@ def _check_pins(rea_version: str, pins: dict[str, str], *, commit_body: bool = T
     stream = sys.stdout if commit_body else sys.stderr
     rows = (
         ("rea", rea_version, rea_version),
+        ("rea-full", _rea_full_pin(), rea_version),
         ("jadx-headless-mcp", _jadx_pin(), pins["jadx-headless-mcp"]),
         ("kuna", _kuna_pin(), pins["kuna"]),
         ("ghidra", _ghidra_pin(), pins["ghidra"]),
@@ -226,9 +243,9 @@ def check() -> None:
         return
     fail(
         "the tap no longer matches the engines REA verifies; run "
-        "`python3 scripts/bump/rea.py` to re-pin jadx-headless-mcp and kuna "
-        "with rea, and update the Ghidra keg (plus ghidra-mcp) by hand when "
-        "REA's verified Ghidra release moves"
+        "`python3 scripts/bump/rea.py` to re-pin jadx-headless-mcp, kuna and "
+        "rea-full with rea, and update the Ghidra keg (plus ghidra-mcp) by hand "
+        "when REA's verified Ghidra release moves"
     )
 
 
@@ -240,6 +257,7 @@ def main() -> None:
     pins = _engine_pins(tag)
 
     current_rea = _rea_pin()
+    current_rea_full = _rea_full_pin()
     current_jadx = _jadx_pin()
     current_kuna = _kuna_pin()
     current_ghidra = _ghidra_pin()
@@ -262,13 +280,15 @@ def main() -> None:
         pin_kuna(pins["kuna"])
     report("kuna", current_kuna, pins["kuna"])
 
-    # The pin matrix is the commit's evidence only when this run moved rea: an
-    # unrelated bump (say gbrain) still runs this script and would otherwise
-    # decorate its commit message with four `matches REA` lines it never touched.
-    rea_moved = current_rea != version
+    # The pin matrix is the commit's evidence only when this run moved rea (or
+    # the rea-full metapackage that mirrors it): an unrelated bump (say gbrain)
+    # still runs this script and would otherwise decorate its commit message
+    # with five `matches REA` lines it never touched.
+    rea_moved = current_rea != version or current_rea_full != version
     if rea_moved:
         pin_rea(version)
     report("rea", current_rea, version)
+    report("rea-full", current_rea_full, version)
 
     if not _check_pins(version, pins, commit_body=rea_moved):
         fail("the re-pinned formulae still disagree with the REA release")

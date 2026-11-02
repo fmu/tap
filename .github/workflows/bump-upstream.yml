@@ -6,10 +6,11 @@ name: bump upstream
 #
 # Two packages are coupled rather than independent:
 #
-#   rea        `scripts/bump/rea.py` pins the rea-agents npm tarball AND the
-#              engine releases that REA verifies (jadx-headless-mcp, kuna, and
-#              the Ghidra pin it shares with ghidra@12.1). REA is the authority
-#              for those pins, so they are never bumped on their own.
+#   rea        `scripts/bump/rea.py` pins the rea-agents npm tarball (for `rea`
+#              and the `rea-full` metapackage) AND the engine releases that REA
+#              verifies (jadx-headless-mcp, kuna, and the Ghidra pin it shares
+#              with ghidra@12.1). REA is the authority for those pins, so they
+#              are never bumped on their own.
 #   ghidra-mcp `scripts/bump/ghidra-mcp.py` only accepts a release whose Ghidra
 #              extension was built for the Ghidra keg the tap pins.
 #
@@ -65,7 +66,7 @@ jobs:
       # its extension against the Ghidra keg that rea's pin keeps in place. A
       # failed coupling check therefore stops the run before any other package
       # has been re-pinned.
-      - name: Bump rea (with the engines it verifies)
+      - name: Bump rea (with rea-full and the engines it verifies)
         if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'rea'
         env:
           RELEASE_TAG: ${{ inputs.tag }}

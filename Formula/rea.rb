@@ -12,12 +12,13 @@
 #   ghidra            12.1.4  src/ghidra/GhidraReleasePolicy.ts
 #                             (SUPPORTED_GHIDRA_VERSION, via ghidra@12.1)
 #
-# Do not bump any of those four by hand: `scripts/bump/rea.py` reads the pins
-# from the REA release tag, re-pins this formula and both engine formulae in one
-# commit, and refuses to build a tap whose Ghidra pin no longer matches REA (a
-# Ghidra move also needs a ghidra-mcp extension built for the new release, which
-# no bump script can create). Hopper is a cask in homebrew-cask and is therefore
-# an optional provider, not a dependency.
+# Do not bump those pins by hand: `scripts/bump/rea.py` reads them from the REA
+# release tag, re-pins this formula, the `rea-full` metapackage and both engine
+# formulae in one commit, and refuses to build a tap whose Ghidra pin no longer
+# matches REA (a Ghidra move also needs a ghidra-mcp extension built for the new
+# release, which no bump script can create). Hopper is a cask in homebrew-cask
+# and is therefore an optional provider, not a dependency. Formula/rea-full.rb
+# is the metapackage that adds every optional integration Homebrew packages.
 #
 # REA's remaining integrations are opt-in and discovered from PATH or a REA_*
 # setting (rizin, gdb, objdump, apktool, binwalk, unblob, tshark, WABT, sigrok,
