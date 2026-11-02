@@ -1,7 +1,7 @@
 class Qwen3Embed < Formula
   desc "On-demand local Qwen3 embeddings and reranking, served by llama.cpp"
   homepage "https://github.com/fmu/qwen3-embed"
-  url "https://github.com/fmu/qwen3-embed.git", tag: "v0.3.0", revision: "e48d7b233e297da812eb7063147e0af24b9d192f"
+  url "https://github.com/fmu/qwen3-embed.git", tag: "v0.4.0", revision: "dae707eabb80d3e7df39b639187d0a53a346f334"
   head "https://github.com/fmu/qwen3-embed.git", branch: "main"
 
   depends_on "bun"
@@ -50,37 +50,37 @@ class Qwen3Embed < Formula
   def caveats
     <<~EOS
       Install the models once (embedding ~3.3 GB, reranker ~0.6 GB, both
-      SHA-256 verified):
+      SHA-256 verified), then run the proxy at login:
 
-        qwen3-embed model install               # both models
-        qwen3-embed model install reranker      # reranker only (optional)
+        qwen3-embed setup               # both models, SHA-256 verified
+        brew services start qwen3-embed
+        brew services info qwen3-embed
 
-      They live under ~/.local/share/qwen3-embed/models by default. The proxy
-      starts each model on first use and unloads it after its own idle window:
-      the embedding server follows the active mode's TTL, the reranker has its
-      own reranker.ttlSeconds. The two processes are independent, so one being
+      `model install reranker` installs just the reranker. The files live under
+      ~/.local/share/qwen3-embed/models by default. The proxy starts each model
+      on first use and unloads it after its own idle window: the embedding
+      server follows the active mode's TTL, the reranker has its own
+      reranker.ttlSeconds. The two processes are independent, so one being
       resident never keeps the other loaded.
 
-      `serve` needs only bun and llama.cpp; gbrain is optional. `setup` writes
-      gbrain's provider configuration, and `gbrain` is not a dependency of this
-      formula: install it from the same tap (`brew install gbrain`) or keep
-      your own copy on PATH. A global npm/bun install lands in
-      #{HOMEBREW_PREFIX}/bin, which the qwen3-embed wrapper already includes.
+      `serve` needs only bun and llama.cpp; gbrain is optional and not a
+      dependency of this formula. Only the separate gbrain integration uses it:
 
-      Then, only if you use gbrain, point it at this service and run the proxy
-      at login:
+        qwen3-embed setup-gbrain        # configure gbrain and backfill
 
-        qwen3-embed setup
-        brew services start qwen3-embed
-
-      `setup` configures both the embedding and reranker provider URLs against
-      the same loopback endpoint (#{HOMEBREW_PREFIX} installs both models).
+      `setup-gbrain` writes gbrain's provider configuration (embedding and
+      reranker URLs against the same loopback endpoint) and runs while
+      `gbrain serve` is stopped. Install gbrain from the same tap
+      (`brew install gbrain`) or keep your own copy on PATH; a global npm/bun
+      install lands in #{HOMEBREW_PREFIX}/bin, which the qwen3-embed wrapper
+      already includes.
     EOS
   end
 
   test do
     assert_match "Usage:", shell_output("#{bin}/qwen3-embed --help")
     assert_match "reranker", shell_output("#{bin}/qwen3-embed --help")
+    assert_match "setup-gbrain", shell_output("#{bin}/qwen3-embed --help")
 
     (testpath/"config.json").write <<~JSON
       {

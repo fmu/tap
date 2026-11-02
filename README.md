@@ -316,16 +316,16 @@ brew install fmu/tap/qwen3-embed
 ```
 
 The formula depends on `bun` and `llama.cpp` from Homebrew; there are no Nix
-dependencies, and `serve` needs no gbrain. The optional `setup` integration
-needs the `gbrain` CLI on `PATH`; install it from this same tap
+dependencies, and `serve` needs no gbrain. The optional `setup-gbrain`
+integration needs the `gbrain` CLI on `PATH`; install it from this same tap
 (`brew install fmu/tap/gbrain`) or use your existing installation.
 
 Post-install, once:
 
 ```bash
-qwen3-embed model install      # both GGUFs: ~3.3 GB embedding + ~0.6 GB reranker
-qwen3-embed setup              # optional: configure gbrain (embeddings + reranker) and backfill
+qwen3-embed setup               # both GGUFs: ~3.3 GB embedding + ~0.6 GB reranker
 brew services start qwen3-embed
+qwen3-embed setup-gbrain        # optional: configure gbrain (embeddings + reranker) and backfill
 ```
 
 `model install reranker` installs just the reranker; `model install embedding`
@@ -357,8 +357,8 @@ brew uninstall qwen3-embed
 
 The formula tracks the tagged source release of
 [fmu/qwen3-embed](https://github.com/fmu/qwen3-embed) and is bumped by hand
-when that repository is tagged. The current pin is `v0.3.0` (the rename release
-that makes the package `qwen3-embed`).
+when that repository is tagged. The current pin is `v0.4.0` (the release that
+splits the gbrain integration out of `setup` into `setup-gbrain`).
 
 ### designcraft-cli
 
