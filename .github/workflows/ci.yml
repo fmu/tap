@@ -33,7 +33,7 @@ jobs:
         run: |
           brew audit --strict \
             fmu/tap/gbrain \
-            fmu/tap/gbrain-embed \
+            fmu/tap/qwen3-embed \
             fmu/tap/designcraft-cli \
             fmu/tap/figcraft-cli \
             fmu/tap/solidcraft-cli \
@@ -61,7 +61,7 @@ jobs:
             fmu/tap/pared-app
       - name: Install formulae
         run: |
-          brew install fmu/tap/gbrain-embed
+          brew install fmu/tap/qwen3-embed
           brew install fmu/tap/gbrain
           brew install fmu/tap/designcraft-cli
           brew install fmu/tap/figcraft-cli
@@ -104,7 +104,7 @@ jobs:
           fi
       - name: Test
         run: |
-          brew test fmu/tap/gbrain-embed
+          brew test fmu/tap/qwen3-embed
           brew test fmu/tap/gbrain
           brew test fmu/tap/designcraft-cli
           brew test fmu/tap/figcraft-cli

@@ -23,7 +23,7 @@ brew install fmu/tap/unblob       # firmware extractor (binwalk, 7z, unar, ...)
 brew install fmu/tap/jadx-headless-mcp  # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/kuna         # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
-brew install fmu/tap/gbrain fmu/tap/gbrain-embed
+brew install fmu/tap/gbrain fmu/tap/qwen3-embed
 brew install fmu/tap/designcraft-cli  # the headless DesignCraft engine (matches the app cask)
 brew install fmu/tap/figcraft-cli  # the headless FigCraft engine (matches the app cask)
 brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stream as the app cask)
@@ -297,10 +297,9 @@ formula on the latest upstream release, so `brew update && brew upgrade gbrain`
 tracks upstream as well. In-place self-update needs a user-writable Homebrew
 prefix.
 
-### gbrain-embed
+### qwen3-embed
 
-On-demand local embeddings and reranking for
-[gbrain](https://github.com/garrytan/gbrain), served by
+On-demand local Qwen3 embeddings and reranking, served by
 [llama.cpp](https://github.com/ggml-org/llama.cpp). It runs one loopback
 OpenAI-compatible endpoint that fronts two independent `llama-server`
 processes: the embedding model, started on the first embedding request, and
@@ -308,47 +307,58 @@ the Qwen3-Reranker-0.6B cross-encoder, started on the first rerank request.
 Each one stops again after its own idle window, so either model is resident
 only while it is in use and unloading one never disturbs the other.
 
+Nothing in it is specific to [gbrain](https://github.com/garrytan/gbrain): any
+client that speaks the OpenAI embeddings API can use the endpoint, and one
+intended use is gbrain embedding (where `setup` also wires up the reranker).
+
 ```bash
-brew install fmu/tap/gbrain-embed
+brew install fmu/tap/qwen3-embed
 ```
 
 The formula depends on `bun` and `llama.cpp` from Homebrew; there are no Nix
-dependencies. It needs the `gbrain` CLI on `PATH`; install it from this same tap
+dependencies, and `serve` needs no gbrain. The optional `setup` integration
+needs the `gbrain` CLI on `PATH`; install it from this same tap
 (`brew install fmu/tap/gbrain`) or use your existing installation.
 
 Post-install, once:
 
 ```bash
-gbrain-embed model install      # both GGUFs: ~3.3 GB embedding + ~0.6 GB reranker
-gbrain-embed setup              # configure gbrain (embeddings + reranker) and backfill
-brew services start gbrain-embed
+qwen3-embed model install      # both GGUFs: ~3.3 GB embedding + ~0.6 GB reranker
+qwen3-embed setup              # optional: configure gbrain (embeddings + reranker) and backfill
+brew services start qwen3-embed
 ```
 
 `model install reranker` installs just the reranker; `model install embedding`
 just the embedder. The files live under
-`~/.local/share/gbrain-embed/models` by default and are shared by `gbrain
-serve`. Both are SHA-256 pinned: the reranker uses the llama.cpp maintainers'
-Q8_0 conversion (`ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF`), because the
-community quantized conversions drop the classifier tensor that makes the
-scores meaningful.
+`~/.local/share/qwen3-embed/models` by default and, with the integration, are
+shared by `gbrain serve`. Both are SHA-256 pinned: the reranker uses the
+llama.cpp maintainers' Q8_0 conversion
+(`ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF`), because the community quantized
+conversions drop the classifier tensor that makes the scores meaningful.
 
-`brew services` keeps `gbrain-embed serve` running at login; `gbrain-embed
-status`, `gbrain-embed mode throughput`, and `gbrain-embed bench` work against
+`brew services` keeps `qwen3-embed serve` running at login; `qwen3-embed
+status`, `qwen3-embed mode throughput`, and `qwen3-embed bench` work against
 it (`bench --model reranker` measures the reranker alone). Upgrading
-(`brew upgrade gbrain-embed`) replaces the code but not the models or
-`~/.config/gbrain-embed/config.json`.
+(`brew upgrade qwen3-embed`) replaces the code but not the models or
+`~/.config/qwen3-embed/config.json`.
+
+Upgrading from the old `gbrain-embed` name means reinstalling the formula and
+moving the state: `brew uninstall gbrain-embed`,
+`mv ~/.local/share/gbrain-embed ~/.local/share/qwen3-embed`, same for
+`~/.local/state/gbrain-embed` and `~/.config/gbrain-embed`, then
+`brew install fmu/tap/qwen3-embed`.
 
 Uninstall:
 
 ```bash
-brew services stop gbrain-embed
-brew uninstall gbrain-embed
+brew services stop qwen3-embed
+brew uninstall qwen3-embed
 ```
 
 The formula tracks the tagged source release of
-[fmu/gbrain-embed](https://github.com/fmu/gbrain-embed) and is bumped by hand
-when that repository is tagged. The current pin is `v0.2.0` (the release that
-adds the reranker).
+[fmu/qwen3-embed](https://github.com/fmu/qwen3-embed) and is bumped by hand
+when that repository is tagged. The current pin is `v0.3.0` (the rename release
+that makes the package `qwen3-embed`).
 
 ### designcraft-cli
 
@@ -678,7 +688,7 @@ Two things are coupled rather than independent:
   tap pins; it never creates a mismatched extension.
 
 `ghidra@12.1` is deliberately absent from the table (see above), and
-`gbrain-embed` follows a hand-made tag of `fmu/gbrain-embed` rather than a
+`qwen3-embed` follows a hand-made tag of `fmu/qwen3-embed` rather than a
 GitHub release.
 
 CI also runs `python3 scripts/bump/rea.py --check`, which compares the tap's
@@ -724,7 +734,7 @@ installed):
 ```bash
 brew tap fmu/audit "file://$PWD"   # the tap is named fmu/audit
 brew trust fmu/audit
-brew audit --strict fmu/audit/gbrain fmu/audit/gbrain-embed \
+brew audit --strict fmu/audit/gbrain fmu/audit/qwen3-embed \
   fmu/audit/pared fmu/audit/ghidra@12.1 \
   fmu/audit/jadx-headless-mcp fmu/audit/jadx-headless-mcp@0.7.1 \
   fmu/audit/kuna fmu/audit/kuna@1.833 \
