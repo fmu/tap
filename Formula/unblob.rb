@@ -24,12 +24,6 @@ class Unblob < Formula
   sha256 "a2276495ae5ec3ed760af85c4c486711998205bbff97b09bde970b3d007b1476"
   license "MIT"
 
-  # The published wheels keep `@rpath`-relative dylib IDs (for example
-  # pyperscan's extension). Homebrew's default relocation rewrites those to
-  # absolute paths, which fails inside the wheels' fixed Mach-O header padding;
-  # keeping the relative IDs is also what the wheels expect at runtime.
-  preserve_rpath
-
   depends_on arch: :arm64
   depends_on "e2fsprogs"
   depends_on "erofs-utils"
@@ -45,6 +39,12 @@ class Unblob < Formula
   depends_on "simg2img"
   depends_on "unar"
   depends_on "zstd"
+
+  # The published wheels keep `@rpath`-relative dylib IDs (for example
+  # pyperscan's extension). Homebrew's default relocation rewrites those to
+  # absolute paths, which fails inside the wheels' fixed Mach-O header padding;
+  # keeping the relative IDs is also what the wheels expect at runtime.
+  preserve_rpath
 
   # BEGIN GENERATED WHEELS (scripts/bump/unblob.py)
   resource "annotated-types" do
