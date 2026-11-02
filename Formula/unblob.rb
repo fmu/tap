@@ -238,23 +238,15 @@ class Unblob < Formula
 
   # END GENERATED WHEELS
 
-  # The build phase of `brew install` runs without network access, but the wheel
-  # resources are fetched lazily (the `resource.fetch` calls in `install`). When
-  # unblob is installed as another formula's dependency, that lazy fetch can run
-  # while the download cache is still empty. Download every wheel in the fetch
-  # phase, which still has network; `install` then finds them in the cache.
-  def fetch
-    resources.each(&:fetch)
-  end
-
   def install
     venv = virtualenv_create(libexec, "python3.14")
     wheels = buildpath/"wheels"
     wheels.mkpath
     wheels.install buildpath.glob("*.whl")
+    # The wheels are downloaded by Homebrew's fetch phase. Read them straight
+    # from the cache: `Resource#fetch` would revalidate the cached file over the
+    # network, which the build sandbox does not allow.
     resources.each do |resource|
-      # Already downloaded by `fetch` (or the prefetch); asking the downloader
-      # again here would do a network freshness check inside the build sandbox.
       download = resource.cached_download
       raise "#{resource.name}: wheel is not in the download cache" unless download.exist?
 
