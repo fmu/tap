@@ -8,11 +8,17 @@
 #
 # It tracks the latest *stable* release rather than the rolling `git-release`
 # tag that mpv.io's macOS row links to. That tag is rebuilt on every push to
-# master: the asset filenames embed the commit, the assets are replaced on each
-# run, and there is no release-independent URL for the newest one, so a cask
-# pinning it would 404 within a day. Stable assets are immutable, which is what
-# a pinned sha256 needs. The scheduled bump re-pins `version` and the four hashes
-# from the release assets; `livecheck` reports the next stable tag.
+# master: the asset filenames embed the commit and run id, and the publish job
+# deletes the previous run's assets before uploading the new ones, so there is
+# no release-independent URL for the newest build. A cask pinning one would 404
+# within hours, an unversioned `version :latest` cask has nothing stable to
+# point at either, and serving one anyway would mean re-hosting mpv's
+# development builds in this tap's own releases. That is why there is no
+# `mpv-app@tip`: for the newest build, download it from the git-release page
+# (<https://github.com/mpv-player/mpv/releases/tag/git-release>) by hand.
+# Stable assets are immutable, which is what a pinned sha256 needs. The
+# scheduled bump re-pins `version` and the four hashes from the release assets;
+# `livecheck` reports the next stable tag.
 #
 # mpv publishes one asset per macOS version its CI runs on, and each asset
 # carries a matching LC_BUILD_VERSION `minos` (the macOS 15 build is `minos
