@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      packages:
+        description: "Bumped package names to validate (space/comma separated); empty tests the whole tap"
+        required: false
+        default: ""
 
 jobs:
   test:
@@ -17,6 +22,8 @@ jobs:
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
       HOMEBREW_NO_ENV_HINTS: 1
+      # Set by the bump workflow's workflow_dispatch; empty elsewhere.
+      BUMPED_PACKAGES: ${{ inputs.packages }}
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@main
@@ -24,62 +31,175 @@ jobs:
         run: |
           brew tap fmu/tap "file://${GITHUB_WORKSPACE}"
           brew trust fmu/tap
+      - name: Compute test scope
+        id: scope
+        run: |
+          set -eo pipefail
+
+          names=()
+          if [ -n "${BUMPED_PACKAGES//[[:space:]]/}" ]; then
+            IFS=' ,' read -r -a names <<< "${BUMPED_PACKAGES}"
+          fi
+
+          if [ "${#names[@]}" -eq 0 ]; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "full=false" >> "$GITHUB_OUTPUT"
+
+          has_name() {
+            local needle="$1"
+            shift
+            [ "$#" -gt 0 ] && printf '%s\n' "$@" | grep -qxF "$needle"
+          }
+
+          formulae=()
+          casks=()
+          for name in "${names[@]}"; do
+            if [ -f "Formula/${name}.rb" ]; then
+              formulae+=("$name")
+            elif [ -f "Casks/${name}.rb" ]; then
+              casks+=("$name")
+            else
+              echo "test scope: ${name} is neither a formula nor a cask in this tap" >&2
+              exit 1
+            fi
+          done
+
+          # A bumped package is validated together with the tap formulae that
+          # depend on it, transitively: bumping partclone must exercise unblob
+          # and rea-full, bumping skippy must exercise mesh-llm, and so on.
+          changed=("${formulae[@]}")
+          while [ "${#changed[@]}" -gt 0 ]; do
+            dependents=()
+            for name in "${changed[@]}"; do
+              while IFS= read -r dependent; do
+                dependent="${dependent#fmu/tap/}"
+                [ -n "$dependent" ] || continue
+                if has_name "$dependent" "${formulae[@]}"; then
+                  continue
+                fi
+                formulae+=("$dependent")
+                dependents+=("$dependent")
+              done < <(brew uses --formula "fmu/tap/${name}" 2>/dev/null | grep -E '^fmu/tap/' || true)
+            done
+            changed=("${dependents[@]}")
+          done
+
+          {
+            echo "formulae=${formulae[*]}"
+            echo "casks=${casks[*]}"
+            if has_name rea "${formulae[@]}" || has_name rea-full "${formulae[@]}"; then
+              echo "check_rea=true"
+            else
+              echo "check_rea=false"
+            fi
+            if has_name unblob "${formulae[@]}" || has_name rea-full "${formulae[@]}"; then
+              echo "check_unblob=true"
+            else
+              echo "check_unblob=false"
+            fi
+            if has_name mornye "${casks[@]}"; then
+              echo "check_mornye=true"
+            else
+              echo "check_mornye=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
       - name: Verify REA's engine pins
         # REA is the authority for the jadx-headless-mcp, kuna and Ghidra
         # releases; this fails if any of the formulae drifts from the releases
         # the pinned REA version verifies.
         run: python3 scripts/bump/rea.py --check
       - name: Audit formulae
+        env:
+          FULL: ${{ steps.scope.outputs.full }}
+          FORMULAE: ${{ steps.scope.outputs.formulae }}
         run: |
-          brew audit --strict \
-            fmu/tap/gbrain \
-            fmu/tap/qwen3-embed \
-            fmu/tap/designcraft-cli \
-            fmu/tap/figcraft-cli \
-            fmu/tap/solidcraft-cli \
-            fmu/tap/vectorcraft-cli \
-            fmu/tap/wordcraft-cli \
-            fmu/tap/pared \
-            fmu/tap/ghidra@12.1 \
-            fmu/tap/jadx-headless-mcp \
-            fmu/tap/jadx-headless-mcp@0.7.1 \
-            fmu/tap/kuna \
-            fmu/tap/kuna@1.833 \
-            fmu/tap/ghidra-mcp \
-            fmu/tap/rea \
-            fmu/tap/rea-full \
-            fmu/tap/partclone \
-            fmu/tap/sasquatch \
-            fmu/tap/mesh-llm \
-            fmu/tap/skippy \
-            fmu/tap/unblob
-      - name: Audit casks
-        run: |
-          brew audit --strict --cask \
-            fmu/tap/baocut \
-            fmu/tap/iqualize \
-            fmu/tap/mornye \
-            fmu/tap/mpv-app \
-            fmu/tap/pared-app
-      - name: Install formulae
-        run: |
-          brew install fmu/tap/qwen3-embed
-          brew install fmu/tap/gbrain
-          brew install fmu/tap/designcraft-cli
-          brew install fmu/tap/figcraft-cli
-          brew install fmu/tap/solidcraft-cli
-          brew install fmu/tap/vectorcraft-cli
-          brew install fmu/tap/wordcraft-cli
-          brew install fmu/tap/mesh-llm
-          # Pared is macOS 27 only; installing it on an older runner fails by
-          # design, so only try where it can run.
-          if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
-            brew install fmu/tap/pared
-            echo "PARED_INSTALLED=1" >> "$GITHUB_ENV"
+          if [ "$FULL" = "true" ]; then
+              brew audit --strict \
+                fmu/tap/gbrain \
+                fmu/tap/qwen3-embed \
+                fmu/tap/designcraft-cli \
+                fmu/tap/figcraft-cli \
+                fmu/tap/solidcraft-cli \
+                fmu/tap/vectorcraft-cli \
+                fmu/tap/wordcraft-cli \
+                fmu/tap/pared \
+                fmu/tap/ghidra@12.1 \
+                fmu/tap/jadx-headless-mcp \
+                fmu/tap/jadx-headless-mcp@0.7.1 \
+                fmu/tap/kuna \
+                fmu/tap/kuna@1.833 \
+                fmu/tap/ghidra-mcp \
+                fmu/tap/rea \
+                fmu/tap/rea-full \
+                fmu/tap/partclone \
+                fmu/tap/sasquatch \
+                fmu/tap/mesh-llm \
+                fmu/tap/skippy \
+                fmu/tap/unblob
           else
-            echo "skipping pared: needs macOS 27, runner is $(sw_vers -productVersion)"
+            for formula in $FORMULAE; do
+              brew audit --strict "fmu/tap/${formula}"
+            done
+          fi
+      - name: Audit casks
+        env:
+          FULL: ${{ steps.scope.outputs.full }}
+          CASKS: ${{ steps.scope.outputs.casks }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            brew audit --strict --cask \
+              fmu/tap/baocut \
+              fmu/tap/iqualize \
+              fmu/tap/mornye \
+              fmu/tap/mpv-app \
+              fmu/tap/pared-app
+          else
+            for cask in $CASKS; do
+              brew audit --strict --cask "fmu/tap/${cask}"
+            done
+          fi
+      - name: Install formulae
+        env:
+          FULL: ${{ steps.scope.outputs.full }}
+          FORMULAE: ${{ steps.scope.outputs.formulae }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            brew install fmu/tap/qwen3-embed
+            brew install fmu/tap/gbrain
+            brew install fmu/tap/designcraft-cli
+            brew install fmu/tap/figcraft-cli
+            brew install fmu/tap/solidcraft-cli
+            brew install fmu/tap/vectorcraft-cli
+            brew install fmu/tap/wordcraft-cli
+            brew install fmu/tap/mesh-llm
+            # Pared is macOS 27 only; installing it on an older runner fails by
+            # design, so only try where it can run.
+            if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
+              brew install fmu/tap/pared
+              echo "PARED_INSTALLED=1" >> "$GITHUB_ENV"
+            else
+              echo "skipping pared: needs macOS 27, runner is $(sw_vers -productVersion)"
+            fi
+          else
+            for formula in $FORMULAE; do
+              case "$formula" in
+                pared)
+                  if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
+                    brew install "fmu/tap/${formula}"
+                    echo "PARED_INSTALLED=1" >> "$GITHUB_ENV"
+                  else
+                    echo "skipping pared: needs macOS 27, runner is $(sw_vers -productVersion)"
+                  fi
+                  ;;
+                *) brew install "fmu/tap/${formula}" ;;
+              esac
+            done
           fi
       - name: Install the reverse-engineering toolchain
+        if: steps.scope.outputs.full == 'true'
         # Order matters only for readability: ghidra-mcp pulls the pinned
         # ghidra@12.1 (and builds its native components); rea-full pulls rea,
         # the engines rea verifies, and the optional integrations Homebrew has.
@@ -93,47 +213,84 @@ jobs:
           brew install fmu/tap/ghidra-mcp
           brew install fmu/tap/rea-full
       - name: Install casks
+        env:
+          FULL: ${{ steps.scope.outputs.full }}
+          CASKS: ${{ steps.scope.outputs.casks }}
         run: |
-          brew install --cask \
-            fmu/tap/baocut \
-            fmu/tap/iqualize \
-            fmu/tap/mornye \
-            fmu/tap/mpv-app
-          if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
-            brew install --cask fmu/tap/pared-app
-            echo "PARED_APP_INSTALLED=1" >> "$GITHUB_ENV"
+          if [ "$FULL" = "true" ]; then
+            brew install --cask \
+              fmu/tap/baocut \
+              fmu/tap/iqualize \
+              fmu/tap/mornye \
+              fmu/tap/mpv-app
+            if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
+              brew install --cask fmu/tap/pared-app
+              echo "PARED_APP_INSTALLED=1" >> "$GITHUB_ENV"
+            else
+              echo "skipping pared-app: needs macOS 27, runner is $(sw_vers -productVersion)"
+            fi
           else
-            echo "skipping pared-app: needs macOS 27, runner is $(sw_vers -productVersion)"
+            for cask in $CASKS; do
+              case "$cask" in
+                pared-app)
+                  if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
+                    brew install --cask "fmu/tap/${cask}"
+                    echo "PARED_APP_INSTALLED=1" >> "$GITHUB_ENV"
+                  else
+                    echo "skipping pared-app: needs macOS 27, runner is $(sw_vers -productVersion)"
+                  fi
+                  ;;
+                *) brew install --cask "fmu/tap/${cask}" ;;
+              esac
+            done
           fi
       - name: Test
+        env:
+          FULL: ${{ steps.scope.outputs.full }}
+          FORMULAE: ${{ steps.scope.outputs.formulae }}
         run: |
-          brew test fmu/tap/qwen3-embed
-          brew test fmu/tap/gbrain
-          brew test fmu/tap/designcraft-cli
-          brew test fmu/tap/figcraft-cli
-          brew test fmu/tap/solidcraft-cli
-          brew test fmu/tap/vectorcraft-cli
-          brew test fmu/tap/wordcraft-cli
-          brew test fmu/tap/kuna
-          brew test fmu/tap/kuna@1.833
-          brew test fmu/tap/jadx-headless-mcp
-          brew test fmu/tap/jadx-headless-mcp@0.7.1
-          brew test fmu/tap/ghidra-mcp
-          brew test fmu/tap/rea
-          brew test fmu/tap/rea-full
-          brew test fmu/tap/partclone
-          brew test fmu/tap/sasquatch
-          brew test fmu/tap/skippy
-          brew test fmu/tap/mesh-llm
-          brew test fmu/tap/unblob
-          if [ "${PARED_INSTALLED:-}" = "1" ]; then
-            brew test fmu/tap/pared
+          if [ "$FULL" = "true" ]; then
+            brew test fmu/tap/qwen3-embed
+            brew test fmu/tap/gbrain
+            brew test fmu/tap/designcraft-cli
+            brew test fmu/tap/figcraft-cli
+            brew test fmu/tap/solidcraft-cli
+            brew test fmu/tap/vectorcraft-cli
+            brew test fmu/tap/wordcraft-cli
+            brew test fmu/tap/kuna
+            brew test fmu/tap/kuna@1.833
+            brew test fmu/tap/jadx-headless-mcp
+            brew test fmu/tap/jadx-headless-mcp@0.7.1
+            brew test fmu/tap/ghidra-mcp
+            brew test fmu/tap/rea
+            brew test fmu/tap/rea-full
+            brew test fmu/tap/partclone
+            brew test fmu/tap/sasquatch
+            brew test fmu/tap/skippy
+            brew test fmu/tap/mesh-llm
+            brew test fmu/tap/unblob
+            if [ "${PARED_INSTALLED:-}" = "1" ]; then
+              brew test fmu/tap/pared
+            fi
+          else
+            for formula in $FORMULAE; do
+              case "$formula" in
+                pared)
+                  if [ "${PARED_INSTALLED:-}" = "1" ]; then
+                    brew test "fmu/tap/${formula}"
+                  fi
+                  ;;
+                *) brew test "fmu/tap/${formula}" ;;
+              esac
+            done
           fi
       - name: Check unblob finds its extractors
+        if: steps.scope.outputs.full == 'true' || steps.scope.outputs.check_unblob == 'true'
         # --show-external-dependencies exits 1 when an extractor is missing; the
         # `unblob` wrapper adds the keg-only e2fsprogs and Homebrew sbin to PATH.
         run: unblob --show-external-dependencies
       - name: Check REA finds its engines
+        if: steps.scope.outputs.full == 'true' || steps.scope.outputs.check_rea == 'true'
         # The formula's caveats tell users to export these; set them the same way
         # here and let README's audit instructions stay the source of truth.
         run: |
@@ -162,6 +319,7 @@ jobs:
                   assert expected in json.dumps(check), f"{name} does not report {expected}: {check}"
           PY
       - name: Check Mornye's extension registry default
+        if: steps.scope.outputs.full == 'true' || steps.scope.outputs.check_mornye == 'true'
         run: |
           registry="$(defaults read com.zarz.mornye flutter.store_registry_url)"
           expected="https://raw.githubusercontent.com/mornyeapp/Mornye-Extension/main/registry.json"
@@ -170,6 +328,7 @@ jobs:
             exit 1
           fi
       - name: Check the installed bundles
+        if: steps.scope.outputs.full == 'true'
         run: |
           for app in iQualize.app Mornye.app mpv.app BaoCut.app; do
             test -d "/Applications/$app" || { echo "missing /Applications/$app" >&2; exit 1; }

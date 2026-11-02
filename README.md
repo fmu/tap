@@ -690,6 +690,13 @@ log but left out of the commit message. The same holds for the engine pin matrix
 reach the commit body only when a bump moved `rea` itself, and a bump that only
 touched an unrelated package keeps them in the job log.
 
+The dispatch names the packages the bump moved. That CI run validates only those
+packages and the tap formulae that depend on them — computed transitively with
+`brew uses`, so bumping `partclone` also exercises `unblob` and `rea-full`, and
+bumping `skippy` exercises `mesh-llm` — instead of auditing, installing and
+testing the whole tap. Push, pull-request and unscoped manual runs still exercise
+everything.
+
 | package | upstream | release tag |
 | --- | --- | --- |
 | `rea` (+ `rea-full`, `jadx-headless-mcp@<REA pin>`, `kuna@<REA pin>`) | `morluto/rea` | `rea-agents-<version>` |
@@ -761,9 +768,13 @@ Formulae are under `Formula/` and casks under `Casks/`; both are plain Ruby
 files. [`ci.yml`](.github/workflows/ci.yml) audits every formula and cask on the
 latest macOS, installs the packages the runner can run, runs the formula tests,
 and checks that the engine pins match the pinned REA release. The two Apple
-silicon/macOS 27 artifacts are only installed when the runner is new enough; the
-reverse-engineering toolchain is installed on every run, which builds
-`ghidra@12.1`'s macOS native components and therefore dominates the job time.
+silicon/macOS 27 artifacts are only installed when the runner is new enough.
+
+An unscoped run (push, pull request, manual dispatch without input) exercises the
+whole tap, which installs the reverse-engineering toolchain and builds
+`ghidra@12.1`'s macOS native components, dominating the job time. The scheduled
+bump workflow instead dispatches the run with the packages it bumped, and CI
+validates just those packages and their dependants.
 
 `audit_exceptions/mismatched_binary_allowlist.json` records the one x86_64
 Mach-O helper that Ghidra's own archive carries. It only matters when the keg is

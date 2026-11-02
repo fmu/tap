@@ -214,11 +214,18 @@ jobs:
           # renames the formula and updates its references in README/CI, and a
           # rename appears under its new name because deleted paths are filtered
           # out.
-          packages="$(git diff --cached --name-only --diff-filter=d \
-            | grep -E '^(Formula|Casks)/' \
+          bumped_files="$(git diff --cached --name-only --diff-filter=d \
+            | grep -E '^(Formula|Casks)/' || true)"
+          packages="$(printf '%s\n' "$bumped_files" \
             | sed -e 's|.*/||' -e 's/\.rb$//' \
             | paste -sd, - | sed 's/,/, /g')"
           packages="${packages:-formulae}"
+          # Space-separated for the CI dispatch: it validates only these
+          # packages and the tap formulae that depend on them.
+          bumped_names="$(printf '%s\n' "$bumped_files" \
+            | sed -e 's|.*/||' -e 's/\.rb$//' \
+            | paste -sd' ' -)"
+          echo "BUMPED_PACKAGES=${bumped_names}" >> "$GITHUB_ENV"
           {
             echo "upstream: bump ${packages}"
             echo
@@ -229,7 +236,9 @@ jobs:
           git push origin main
 
       # A push made with the default token does not start other workflows, so
-      # ask for the macOS validation explicitly.
-      - name: Validate on macOS
+      # ask for the macOS validation explicitly, limited to the packages this
+      # run bumped (plus their dependants) instead of the whole tap.
+      - name: Validate the bumped packages on macOS
         if: steps.changes.outputs.changed == 'true'
-        run: gh workflow run ci.yml --ref main --repo "$GITHUB_REPOSITORY"
+        run: gh workflow run ci.yml --ref main --repo "$GITHUB_REPOSITORY" \
+          -f packages="$BUMPED_PACKAGES"

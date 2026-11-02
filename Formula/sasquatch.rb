@@ -46,7 +46,9 @@ class Sasquatch < Formula
   end
 
   test do
-    assert_match "4.5.1", shell_output("#{bin}/sasquatch -version")
+    # `-version` prints the version but exits 1: the squashfs tools treat it as
+    # a usage request, like `-help`.
+    assert_match "4.5.1", shell_output("#{bin}/sasquatch -version", 1)
     assert_path_exists bin/"sasquatch-v4be"
   end
 end
