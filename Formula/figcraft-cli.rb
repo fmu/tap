@@ -19,8 +19,8 @@
 class FigcraftCli < Formula
   desc "Headless FigCraft engine to design, prototype and export interfaces"
   homepage "https://getartcraft.com/apps/figcraft"
-  url "https://github.com/storytold/figcraft/releases/download/v0.14.0/figcraft-cli-0.14.0-macos-universal.zip"
-  sha256 "929fd47f2f03e587caa4090f1d13ec5c0e0ead20bc61005442fcb11da21966b1"
+  url "https://github.com/storytold/figcraft/releases/download/v0.15.0/figcraft-cli-0.15.0-macos-universal.zip"
+  sha256 "fcf727187e237bcc453723e2fc45c1264b8f800c9b55ca75d0666daf93f2e6da"
   license any_of: ["MIT", "Apache-2.0"]
 
   livecheck do
