@@ -7,7 +7,7 @@ build as unverified, so these packages are bumped together instead of tracking
 their own upstream latest:
 
   Formula/rea.rb                     rea-agents npm tarball
-  Formula/rea-full.rb                the same tarball, for the integration metapackage
+  Formula/rea-full.rb                the same tarball, for the integration launcher
   Formula/jadx-headless-mcp@<v>.rb   src/android/JadxRelease.ts  JADX_RELEASE.version
   Formula/kuna@<v>.rb                src/kuna/KunaRelease.ts     KUNA_VERIFIED_VERSION
   Formula/ghidra@12.1.rb             src/ghidra/GhidraReleasePolicy.ts
@@ -174,7 +174,7 @@ def _pin_rea_tarball(formula: str, version: str, sha256: str) -> None:
 
 
 def pin_rea(version: str) -> None:
-    """Pin Formula/rea.rb and the rea-full metapackage to one release."""
+    """Pin Formula/rea.rb and the rea-full variant to one release."""
     sha256 = download_sha256(NPM_TARBALL.format(version=version))
     _pin_rea_tarball(REA_FORMULA, version, sha256)
     _pin_rea_tarball(REA_FULL_FORMULA, version, sha256)
@@ -477,7 +477,7 @@ def main() -> None:
     report("kuna", current_kuna, pins["kuna"])
 
     # The pin matrix is the commit's evidence only when this run moved rea (or
-    # the rea-full metapackage that mirrors it): an unrelated bump (say gbrain)
+    # the rea-full variant that mirrors it): an unrelated bump (say gbrain)
     # still runs this script and would otherwise decorate its commit message
     # with five `matches REA` lines it never touched.
     rea_moved = current_rea != version or current_rea_full != version

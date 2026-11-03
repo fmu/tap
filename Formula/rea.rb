@@ -15,20 +15,22 @@
 #                                    (SUPPORTED_GHIDRA_VERSION, via ghidra@12.1)
 #
 # Do not bump those pins by hand: `scripts/bump/rea.py` reads them from the REA
-# release tag, re-pins this formula, the `rea-full` metapackage and both engine
+# release tag, re-pins this formula, the `rea-full` variant and both engine
 # formulae in one commit, and refuses to build a tap whose Ghidra pin no longer
 # matches REA (a Ghidra move also needs a ghidra-mcp extension built for the new
 # release, which no bump script can create). A JADX or Kuna move renames its keg
 # and every `jadx-headless-mcp@<release>`/`kuna@<release>` reference with it.
 # Hopper is a cask in homebrew-cask
 # and is therefore an optional provider, not a dependency. Formula/rea-full.rb
-# is the metapackage that adds every optional integration Homebrew packages.
+# is the variant that adds every optional integration Homebrew packages and
+# installs the `rea`/`rea-agents` launchers that supply their settings; the two
+# formulae are alternatives, because both own those commands.
 #
 # REA's remaining integrations are opt-in and discovered from PATH or a REA_*
 # setting (rizin, gdb, objdump, apktool, binwalk, unblob, tshark, WABT, sigrok,
-# mitmdump, IDA, JEB and Cutter). They are not dependencies: `rea doctor`
-# reports them and REA runs without them. Nothing in REA links radare2 or
-# capstone, so neither is declared here.
+# mitmdump, IDA, JEB and Cutter). They are not dependencies: REA runs without
+# them and names the setting for one when a tool is missing. Nothing in REA
+# links radare2 or capstone, so neither is declared here.
 class Rea < Formula
   desc "Reverse engineer anything from your terminal or agent"
   homepage "https://github.com/morluto/rea"
@@ -72,7 +74,14 @@ class Rea < Formula
         export REA_KUNA_COMMAND="#{formula_opt_bin("kuna@1.833")}/kuna"
         export REA_JADX_MCP_JAR="#{formula_opt_libexec("jadx-headless-mcp@0.7.1")}/jadx-headless-mcp.jar"
 
-      `rea doctor --json` reports every integration and what is still missing.
+      `brew install fmu/tap/rea-full` is the alternative for the whole set: it
+      installs `rea`/`rea-agents` launchers that supply this block and every
+      optional integration setting, so nothing has to be exported. That formula
+      and this one are alternatives, because both own those commands
+      (`brew info rea-full`).
+
+      `rea doctor --json` reports the analysis engines and the agent
+      registrations it can find; the optional integrations are not part of it.
 
       Java: ghidra@12.1 brings the openjdk@21 that REA's Ghidra bridge is
       verified with, while openjdk (latest) is installed for the JADX bridge.
@@ -103,8 +112,7 @@ class Rea < Formula
         export REA_RIZIN_COMMAND="$(brew --prefix rizin)/bin/rizin"
 
       gdb, objdump, apktool, binwalk, unblob, tshark, WABT, sigrok and mitmdump
-      follow the same pattern; `rea doctor --json` lists each one with its
-      setting.
+      follow the same pattern.
     EOS
   end
 

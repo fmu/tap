@@ -7,7 +7,7 @@ name: bump upstream
 # Three packages are coupled rather than independent:
 #
 #   rea             `scripts/bump/rea.py` pins the rea-agents npm tarball (for
-#                   `rea` and the `rea-full` metapackage) AND the versioned
+#                   `rea` and the `rea-full` launcher formula) AND the versioned
 #                   engine kegs REA verifies (jadx-headless-mcp@<release>,
 #                   kuna@<release>, and the Ghidra pin it shares with
 #                   ghidra@12.1). REA is the authority for those pins, so they

@@ -18,7 +18,7 @@ derives the URL from the tap name:
 
 ```bash
 brew install fmu/tap/rea          # the reverse-engineering MCP server and CLI
-brew install fmu/tap/rea-full     # REA plus every integration Homebrew packages
+brew install fmu/tap/rea-full     # REA preconfigured with every packaged integration
 brew install fmu/tap/unblob       # firmware extractor (binwalk, 7z, unar, ...)
 brew install fmu/tap/skippy        # standalone model-serving CLI (Apple silicon)
 brew install fmu/tap/mesh-llm      # distributed LLM mesh runtime (Apple silicon)
@@ -82,19 +82,23 @@ Rizin is the other optional integration this tap can supply
 (`brew install rizin`, then `REA_RIZIN_COMMAND`); gdb, objdump, apktool,
 binwalk, tshark, WABT, sigrok, mitmdump, IDA, JEB and Cutter are detected from
 `PATH` or their own `REA_*` setting and are not dependencies of this formula.
-`brew install fmu/tap/rea-full` adds the ones Homebrew packages (see below), and
-`rea doctor --json` lists each integration with its setting.
+`brew install fmu/tap/rea-full` is the alternative that adds the ones Homebrew
+packages and the `rea`/`rea-agents` launchers that export their settings (see
+below); `rea doctor --json` reports the analysis engines and the agent
+registrations it can find, not the optional integrations.
 
 Java note: `ghidra@12.1` brings the `openjdk@21` that REA's Ghidra bridge is
 verified against, while `openjdk` (latest) serves the JADX bridge. REA picks a
 JDK from `JAVA_HOME`, then `PATH`, then Homebrew's `opt/openjdk`; if doctor
-complains, export `JAVA_HOME` for `openjdk@21` before `rea setup`.
+complains, export `JAVA_HOME` for `openjdk@21` before `rea setup`. The
+`rea-full` launcher defaults `JAVA_HOME` to that release already.
 
 ### rea-full
 
 `rea-full` is the one-command way to get REA with every optional integration
-Homebrew can install, so `rea doctor` finds them instead of reporting them
-missing. It depends on `rea` and on the formulae below:
+Homebrew can install. It depends on `rea` and on the formulae below, and it
+installs the `rea`/`rea-agents` launchers that export the matching `REA_*`
+settings, so nothing has to be added to a shell profile:
 
 | integration | formula | REA setting |
 | --- | --- | --- |
@@ -103,18 +107,42 @@ missing. It depends on `rea` and on the formulae below:
 | Android APK unpacking | `apktool` | `REA_APKTOOL_COMMAND` |
 | firmware images | `binwalk` | `REA_BINWALK_COMMAND` |
 | firmware extraction | `unblob` | `REA_UNBLOB_COMMAND` |
-| capture dissection | `wireshark` (`tshark`, `capinfos`) | `REA_TSHARK_COMMAND` |
+| capture dissection | `wireshark` (`tshark`, `capinfos`) | `REA_TSHARK_COMMAND`, `REA_CAPINFOS_COMMAND` |
 | WebAssembly | `wabt` (`wasm2wat` …) | `REA_WABT_BIN_DIRECTORY` |
 | signal decoding | `sigrok-cli` | `REA_SIGROK_COMMAND` |
 
 `rea` itself brings the pinned engines (`jadx-headless-mcp@0.7.1`,
 `kuna@1.833` and `ghidra@12.1`); the standalone `ghidra-mcp` server is not a REA
-provider, so it is not part of the bundle.
+provider, so it is not part of the bundle. The launcher supplies their settings
+too (`GHIDRA_INSTALL_DIR`, `REA_KUNA_COMMAND`, `REA_JADX_MCP_JAR` and
+`JAVA_HOME` for the verified `openjdk@21`), so neither the CLI nor the MCP
+registrations `rea setup` writes need exports:
 
 ```bash
 brew install fmu/tap/rea-full
-rea doctor --json
+rea doctor --json              # finds the pinned Ghidra, Kuna and JADX engines
+rea setup                      # registers this launcher, settings included
 ```
+
+An `REA_*` variable that is already exported overrides the launcher's default,
+so pointing REA at another tool keeps working.
+
+`rea` and `rea-full` are alternatives, not additions: both provide `bin/rea`
+and `bin/rea-agents` (the npm package's two command names, which behave
+identically), and Homebrew links `-full` siblings as one family, so installing
+one after the other replaces those commands and reports the overwritten links.
+The kegs can coexist (`rea` is `rea-full`'s dependency), but only one of them
+owns the commands on `PATH`. To go back to the plain, unconfigured CLI:
+
+```bash
+brew uninstall rea-full
+brew unlink rea && brew link rea
+```
+
+Homebrew leaves the `rea` keg marked linked even though this launcher replaced
+its files, which is why the second line is needed. If Homebrew's autoremove
+removed the `rea` dependency keg together with this formula, `brew install
+fmu/tap/rea` brings it (and the engines) back instead.
 
 `objdump` needs no dependency: the Command Line Tools' `/usr/bin/objdump` is
 what REA looks for by default, and GNU binutils would not do because it is
@@ -126,14 +154,14 @@ are not in Homebrew at all:
 brew install --cask hopper-disassembler cutter mitmproxy
 ```
 
-WABT wants an absolute directory rather than a `PATH` entry, so export it once
-(the caveats repeat this):
+WABT wants an absolute directory rather than a `PATH` entry, which the launcher
+sets; export it only to override it:
 
 ```bash
 export REA_WABT_BIN_DIRECTORY="$(brew --prefix wabt)/bin"
 ```
 
-`rea-full` is pinned with `rea` by `scripts/bump/rea.py`, so the metapackage and
+`rea-full` is pinned with `rea` by `scripts/bump/rea.py`, so the launcher and
 the CLI cannot drift apart.
 
 ### unblob

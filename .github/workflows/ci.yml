@@ -203,6 +203,9 @@ jobs:
         # Order matters only for readability: ghidra-mcp pulls the pinned
         # ghidra@12.1 (and builds its native components); rea-full pulls rea,
         # the engines rea verifies, and the optional integrations Homebrew has.
+        # rea-full then links its configured `rea`/`rea-agents` launchers over
+        # the plain commands the rea keg linked: Homebrew reports the overwritten
+        # links, because the two formulae are alternatives that own both.
         run: |
           # The unversioned kegs track upstream's latest releases; REA itself
           # uses the pinned @ kegs that rea-full pulls in.
@@ -291,15 +294,13 @@ jobs:
         run: unblob --show-external-dependencies
       - name: Check REA finds its engines
         if: steps.scope.outputs.full == 'true' || steps.scope.outputs.check_rea == 'true'
-        # The formula's caveats tell users to export these; set them the same way
-        # here and let README's audit instructions stay the source of truth.
+        # `rea` on PATH is rea-full's launcher, which supplies every engine and
+        # integration setting. Run it with no exports: that is the contract the
+        # formula ships, and an export here would hide a missing default.
         run: |
-          export GHIDRA_INSTALL_DIR="$(brew --prefix ghidra@12.1)/libexec"
-          export REA_KUNA_COMMAND="$(brew --prefix kuna@1.833)/bin/kuna"
-          export REA_JADX_MCP_JAR="$(brew --prefix jadx-headless-mcp@0.7.1)/libexec/jadx-headless-mcp.jar"
-          # Doctor exits non-zero as long as any integration is missing (Hopper
-          # is a cask and is not installed in CI), so assert on the two engine
-          # reports instead of on the aggregate exit code.
+          # Doctor exits non-zero as long as anything it audits is missing
+          # (Hopper is a cask and is not installed in CI), so assert on the
+          # engine reports instead of on the aggregate exit code.
           rea doctor --json > doctor.json || true
           python3 - <<'PY'
           import json
@@ -317,6 +318,44 @@ jobs:
               assert check["ok"], f"{name} is not ready: {check['detail']}"
               if expected is not None:
                   assert expected in json.dumps(check), f"{name} does not report {expected}: {check}"
+          PY
+      - name: Check the rea-full launcher
+        if: steps.scope.outputs.full == 'true' || steps.scope.outputs.check_rea == 'true'
+        # rea-full and rea are alternatives that share `bin/rea` and
+        # `bin/rea-agents`: the launchers from the rea-full keg must own both
+        # commands, and each must name every setting this formula configures.
+        run: |
+          cellar="$(brew --cellar fmu/tap/rea-full)"
+          launchers=()
+          for command in rea rea-agents; do
+            launcher="$(python3 -c 'import os, shutil, sys; print(os.path.realpath(shutil.which(sys.argv[1])))' "$command")"
+            case "$launcher" in
+              "$cellar"/*) ;;
+              *) echo "$command does not resolve into the rea-full keg ($cellar): $launcher" >&2; exit 1 ;;
+            esac
+            launchers+=("$launcher")
+          done
+          python3 - "${launchers[@]}" <<'PY'
+          import sys
+
+          for launcher in sys.argv[1:]:
+              text = open(launcher, encoding="utf-8").read()
+              for setting in (
+                  "GHIDRA_INSTALL_DIR",
+                  "REA_KUNA_COMMAND",
+                  "REA_JADX_MCP_JAR",
+                  "REA_APKTOOL_COMMAND",
+                  "REA_BINWALK_COMMAND",
+                  "REA_CAPINFOS_COMMAND",
+                  "REA_GDB_COMMAND",
+                  "REA_RIZIN_COMMAND",
+                  "REA_SIGROK_COMMAND",
+                  "REA_TSHARK_COMMAND",
+                  "REA_UNBLOB_COMMAND",
+                  "REA_WABT_BIN_DIRECTORY",
+                  "JAVA_HOME",
+              ):
+                  assert setting in text, f"{launcher} does not set {setting}"
           PY
       - name: Check Mornye's extension registry default
         if: steps.scope.outputs.full == 'true' || steps.scope.outputs.check_mornye == 'true'
