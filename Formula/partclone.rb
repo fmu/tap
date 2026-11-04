@@ -38,6 +38,7 @@ class Partclone < Formula
   depends_on "libntfs-3g"
   depends_on "lz4"
   depends_on "openssl@3"
+  depends_on "xxhash"
   depends_on "zstd"
 
   patch do
@@ -51,17 +52,18 @@ class Partclone < Formula
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("e2fsprogs")/"pkgconfig"
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("libntfs-3g")/"pkgconfig"
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("lz4")/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("xxhash")/"pkgconfig"
     ENV.prepend_path "ACLOCAL_PATH", formula_opt_prefix("gettext")/"share/aclocal"
     ENV.prepend_path "ACLOCAL_PATH", formula_opt_prefix("pkg-config")/"share/aclocal"
     ENV.prepend "CPPFLAGS", "-I#{formula_opt_include("openssl@3")} -I#{formula_opt_include("zstd")} " \
                             "-I#{formula_opt_include("e2fsprogs")} -I#{formula_opt_include("libntfs-3g")} " \
-                            "-I#{formula_opt_include("lz4")}"
+                            "-I#{formula_opt_include("lz4")} -I#{formula_opt_include("xxhash")}"
     ENV.prepend "LDFLAGS", "-L#{formula_opt_lib("e2fsprogs")} -L#{formula_opt_lib("libntfs-3g")} " \
-                           "-L#{formula_opt_lib("lz4")}"
+                           "-L#{formula_opt_lib("lz4")} -L#{formula_opt_lib("xxhash")}"
 
     system "./autogen"
     system "./configure", "--prefix=#{prefix}",
-           "--disable-nls", "--disable-xxhash", "--disable-dependency-tracking",
+           "--disable-nls", "--disable-dependency-tracking",
            "--enable-extfs", "--enable-hfsp", "--enable-apfs", "--enable-fat",
            "--enable-exfat", "--enable-minix", "--enable-ntfs", "--enable-zfs"
     system "make"
@@ -95,6 +97,14 @@ class Partclone < Formula
     system sbin/"partclone.restore", "-W", "-s", testpath/"img.pcl",
            "-o", testpath/"dst.bin", "-L", testpath/"partclone.log"
     assert_equal (testpath/"src.bin").binread, (testpath/"dst.bin").binread
+
+    # xxhash is linked in, so the optional XXH64/XXH128 checksum modes must be
+    # available (CRC32 stays the default and is what unblob expects).
+    system sbin/"partclone.imager", "-c", "-a3", "-s", testpath/"src.bin",
+           "-o", testpath/"img-xxh.pcl", "-L", testpath/"partclone.log"
+    assert_match "XXH128",
+                 shell_output("#{sbin}/partclone.info -s #{testpath}/img-xxh.pcl -L #{testpath}/partclone.log")
+    system sbin/"partclone.chkimg", "-s", testpath/"img-xxh.pcl", "-L", testpath/"partclone.log"
 
     # The filesystem-specific dumpers are the reason the formula builds more
     # than restore, so at least check the main one is installed and runnable.

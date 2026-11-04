@@ -255,7 +255,9 @@ partclone.restore -W -s disk.partclone.img -o restored.img -L /tmp/partclone.log
 
 Dumps are partclone image format 0002 with the default CRC32 + BIT bitmap;
 unblob detects and restores them (it invokes `partclone.restore -W ... -L
-/dev/stdout`), so the dumped images can be fed straight back to unblob.
+/dev/stdout`), so the dumped images can be fed straight back to unblob. The
+formula links `xxhash`, so the optional XXH64/XXH128 checksum modes (`-a2`/`-a3`)
+are available as well; keep the CRC32 default for unblob-compatible dumps.
 
 ### libntfs-3g
 
