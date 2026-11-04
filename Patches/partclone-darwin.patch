@@ -1,6 +1,15 @@
 --- a/configure.ac
 +++ b/configure.ac
-@@ -72,7 +72,10 @@ if test "$enable_static_linking" = yes; then
+@@ -2,6 +2,8 @@ AC_INIT([Partclone],[0.3.52],[thomas@clonezilla.org])
+ 
+ #condition for CPU target
+ AC_CANONICAL_TARGET
++
++AM_CONDITIONAL([LINUX], [test "$target_os" = "linux"])
+ AM_CONDITIONAL([X64], [test "$target_cpu" = x86_64])
+ AM_INIT_AUTOMAKE([-Wall foreign])
+ AC_CONFIG_MACRO_DIRS([m4])
+@@ -72,7 +74,10 @@ if test "$enable_static_linking" = yes; then
  fi
  
  dnl Check for uuid
@@ -12,7 +21,7 @@
  
  ## Intel ISA-L ##
  AC_ARG_ENABLE([isal],
-@@ -593,7 +596,10 @@ save_LIBS="$LIBS"
+@@ -593,7 +598,10 @@ save_LIBS="$LIBS"
  LIBS="$LIBS $OPENSSL_LIBS"
  AC_CHECK_FUNCS([EVP_MD_CTX_new EVP_MD_CTX_create EVP_MD_CTX_reset])
  LIBS="$save_LIBS"
@@ -24,7 +33,7 @@
  PKG_CHECK_MODULES([ZSTD], [libzstd],, [AC_MSG_ERROR([libzstd not found])])
  
  ##libm##
-@@ -603,8 +609,7 @@ if test "$ac_cv_have_decl_isnormal" = "yes" ; then
+@@ -603,8 +611,7 @@ if test "$ac_cv_have_decl_isnormal" = "yes" ; then
  fi
  
  # fix bug #1093194
@@ -36,17 +45,30 @@
  AC_CHECK_FUNCS([memfd_create])
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
-@@ -139,7 +139,10 @@ partclone_fat_CFLAGS=-DFAT
+@@ -139,7 +139,12 @@ partclone_fat_CFLAGS=-DFAT
  partclone_fat_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
  endif
  
 +# ntfsfixboot is Linux-only (linux/hdreg.h); not built on Darwin
 +if ENABLE_NTFS
++if LINUX
  sbin_PROGRAMS += partclone.ntfsfixboot
++endif
 +endif
  partclone_ntfsfixboot_SOURCES=ntfsfixboot.c
  if ENABLE_NTFS
  sbin_PROGRAMS += partclone.ntfs
+@@ -275,8 +280,10 @@ if ENABLE_HFSP
+ 	$(LN_S) -f partclone.hfsp $(DESTDIR)$(sbindir)/partclone.hfsplus
+ endif
+ if ENABLE_NTFS
++if LINUX
+ 	$(LN_S) -f partclone.ntfsfixboot $(DESTDIR)$(sbindir)/partclone.ntfsreloc
+ endif
++endif
+ if ENABLE_FAT
+ 	$(LN_S) -f partclone.fat $(DESTDIR)$(sbindir)/partclone.fat12
+ 	$(LN_S) -f partclone.fat $(DESTDIR)$(sbindir)/partclone.fat16
 --- a/src/apfsclone.c
 +++ b/src/apfsclone.c
 @@ -16,13 +16,14 @@
@@ -140,6 +162,24 @@
  #include <sys/stat.h>
  #include <sys/types.h>
  #include <stdio.h>
+--- a/src/ntfsclone-ng.c
++++ b/src/ntfsclone-ng.c
+@@ -17,13 +17,14 @@
+ #include <stdlib.h>
+ #include <stdint.h>
+ #include <inttypes.h>
+-#include <malloc.h>
+ #include <stdarg.h>
+ #include <getopt.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <sys/types.h>
++#if defined(__linux__)
+ #include <linux/types.h>
++#endif
+ #include <errno.h>
+ 
+ #define NTFS_DO_NOT_CHECK_ENDIANS
 --- a/src/partclone.c
 +++ b/src/partclone.c
 @@ -19,29 +19,44 @@

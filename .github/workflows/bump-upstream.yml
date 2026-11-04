@@ -32,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, pared, partclone, rea, sasquatch, skippy, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
+        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, ntfs-3g, pared, partclone, rea, sasquatch, skippy, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
         required: false
         default: "all"
       tag:
@@ -162,6 +162,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/kuna.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump ntfs-3g (libntfs-3g, ntfsprogs)
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'ntfs-3g'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/ntfs-3g.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump mesh-llm
         # Stable releases only: the mesh-llm host bundle lives there.

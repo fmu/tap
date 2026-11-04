@@ -219,13 +219,13 @@ filesystem-specific tools (`partclone.extfs`, `.zfs`, `.exfat`, ...) create
 them. The formula builds both, so dumps can be produced on macOS too.
 
 Supported backends: **ext2/3/4** (`partclone.extfs`, via Homebrew `e2fsprogs`),
-**FAT12/16/32** (`partclone.fat`), **exFAT** (`partclone.exfat`), **HFS+**
-(`partclone.hfsp`), **APFS** (`partclone.apfs`), **minix** (`partclone.minix`)
-and **ZFS** (`partclone.zfs`, the upstream 0.3.52 clean-room parser: stripe
-pool on a single vdev; Homebrew `lz4` plus e2fsprogs' blkid/uuid). The other
-upstream backends are not built: NTFS needs `ntfs-3g`, which Homebrew gates to
-Linux, and XFS/Btrfs/F2FS/reiserfs/reiser4/JFS/NILFS2/UFS/VMFS need Linux-only
-libraries or a substantial port.
+**NTFS** (`partclone.ntfs`, via this tap's `libntfs-3g`), **FAT12/16/32**
+(`partclone.fat`), **exFAT** (`partclone.exfat`), **HFS+** (`partclone.hfsp`),
+**APFS** (`partclone.apfs`), **minix** (`partclone.minix`) and **ZFS**
+(`partclone.zfs`, the upstream 0.3.52 clean-room parser: stripe pool on a single
+vdev; Homebrew `lz4` plus e2fsprogs' blkid/uuid). The other upstream backends
+are not built: XFS/Btrfs/F2FS/reiserfs/reiser4/JFS/NILFS2/UFS/VMFS need
+Linux-only libraries or a substantial port.
 
 Upstream targets Linux, so the patch guards `linux/fs.h`, `mntent.h`,
 `malloc.h`, `linux/types.h` and `byteswap.h`/`endian.h`, provides a
@@ -233,13 +233,14 @@ Upstream targets Linux, so the patch guards `linux/fs.h`, `mntent.h`,
 `getmntinfo()` for the mount check, reads block-device sizes with
 `DKIOCGETBLOCK*`, maps the Linux-only `O_LARGEFILE`/`O_DIRECT` flags to no-ops,
 and drops the Linux-only `ntfsfixboot` helper. The build uses the upstream
-autotools flow, with `openssl@3`, `zstd`, `lz4` and keg-only `e2fsprogs`
-providing what it links (libext2fs links statically from the keg).
+autotools flow, with `openssl@3`, `zstd`, `lz4`, keg-only `e2fsprogs` and
+`libntfs-3g` providing what it links (libext2fs links statically from the keg).
 
 ```bash
 brew install fmu/tap/partclone
 partclone.restore --version
 partclone.ext4 --version
+partclone.ntfs --version
 ```
 
 Dump an image file and put it back (non-root runs need an explicit `-L`, as
@@ -255,6 +256,37 @@ partclone.restore -W -s disk.partclone.img -o restored.img -L /tmp/partclone.log
 Dumps are partclone image format 0002 with the default CRC32 + BIT bitmap;
 unblob detects and restores them (it invokes `partclone.restore -W ... -L
 /dev/stdout`), so the dumped images can be fed straight back to unblob.
+
+### libntfs-3g
+
+[ntfs-3g](https://www.tuxera.com/community/open-source-ntfs-3g/) is the
+userspace NTFS driver. Its FUSE driver needs macFUSE, which is why Homebrew's
+`ntfs-3g` formula is Linux-only — but partition tools only need the library to
+read a volume's allocated clusters. This formula builds `libntfs-3g` and its
+headers alone (no FUSE driver, no ntfsprogs utilities, no crypto) for
+`partclone.ntfs`, and points the dylib's install name at the stable opt path so
+dependents keep resolving it across upgrades.
+
+```bash
+brew install fmu/tap/libntfs-3g
+```
+
+### ntfsprogs
+
+[ntfsprogs](https://www.tuxera.com/community/open-source-ntfs-3g/) is the
+userspace utilities half of ntfs-3g: `mkntfs`, `ntfsls`, `ntfscat`, `ntfscp`,
+`ntfsclone`, `ntfsresize`, `ntfsfix`, `ntfsinfo`, `ntfslabel`, `ntfscmp`,
+`ntfsundelete`, `ntfscluster`, plus the extras `ntfswipe`, `ntfstruncate`,
+`ntfsrecover`, `ntfsusermap` and `ntfssecaudit`. None of them use the FUSE
+driver, so they build on macOS; the formula links `libntfs-3g` into them
+statically and installs no library, so it needs no runtime dependency. The
+version is bumped together with `libntfs-3g` from the same upstream tag.
+
+```bash
+brew install fmu/tap/ntfsprogs
+mkntfs --force --fast --label disk disk.img
+ntfsls -l disk.img
+```
 
 ### skippy
 
@@ -760,6 +792,7 @@ everything.
 | `unblob` | `onekey-sec/unblob` | PyPI `unblob` release (wheels) |
 | `sasquatch` | `onekey-sec/sasquatch` | `sasquatch-v*` |
 | `partclone` | `Thomas-Tsai/partclone` | `<version>` |
+| `ntfs-3g` (`libntfs-3g` + `ntfsprogs`) | `tuxera/ntfs-3g` | `<version>` |
 | `skippy` | `Mesh-LLM/mesh-llm` | rolling preview with a `skippy` CLI asset |
 | `mesh-llm` | `Mesh-LLM/mesh-llm` | `v*` |
 | `ghidra-mcp` | `LaurieWired/GhidraMCP` | `<version>` |

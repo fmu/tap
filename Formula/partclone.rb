@@ -5,11 +5,11 @@
 # create images. They are built here so dumps can be produced on macOS too.
 #
 # Only the backends that are self-contained or need libraries available on
-# macOS are enabled: extfs (Homebrew e2fsprogs), fat, exfat, hfsp, apfs, minix
-# and the clean-room zfs parser (Homebrew lz4 + e2fsprogs' blkid/uuid). The
-# remaining upstream backends need Linux-only libraries (ntfs-3g is gated
-# `depends_on :linux` in Homebrew; xfs/btrfs/f2fs need a port; reiserfs,
-# reiser4, jfs, nilfs2, ufs and vmfs have no macOS libraries).
+# macOS are enabled: extfs (Homebrew e2fsprogs), fat, exfat, hfsp, apfs, minix,
+# ntfs (the libntfs-3g formula from this tap) and the clean-room zfs parser
+# (Homebrew lz4 + e2fsprogs' blkid/uuid). The remaining upstream backends need
+# Linux-only libraries and a large port: xfs/btrfs/f2fs; reiserfs, reiser4, jfs,
+# nilfs2, ufs and vmfs have no macOS libraries at all.
 #
 # Upstream targets Linux: the patch guards linux/fs.h, mntent.h, malloc.h,
 # linux/types.h and byteswap/endian headers, adds a be*toh shim for Darwin,
@@ -35,6 +35,7 @@ class Partclone < Formula
   depends_on "libtool" => :build
   depends_on "pkg-config" => :build
   depends_on "e2fsprogs"
+  depends_on "libntfs-3g"
   depends_on "lz4"
   depends_on "openssl@3"
   depends_on "zstd"
@@ -48,24 +49,27 @@ class Partclone < Formula
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("openssl@3")/"pkgconfig"
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("zstd")/"pkgconfig"
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("e2fsprogs")/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("libntfs-3g")/"pkgconfig"
     ENV.prepend_path "PKG_CONFIG_PATH", formula_opt_lib("lz4")/"pkgconfig"
     ENV.prepend_path "ACLOCAL_PATH", formula_opt_prefix("gettext")/"share/aclocal"
     ENV.prepend_path "ACLOCAL_PATH", formula_opt_prefix("pkg-config")/"share/aclocal"
     ENV.prepend "CPPFLAGS", "-I#{formula_opt_include("openssl@3")} -I#{formula_opt_include("zstd")} " \
-                            "-I#{formula_opt_include("e2fsprogs")} -I#{formula_opt_include("lz4")}"
-    ENV.prepend "LDFLAGS", "-L#{formula_opt_lib("e2fsprogs")} -L#{formula_opt_lib("lz4")}"
+                            "-I#{formula_opt_include("e2fsprogs")} -I#{formula_opt_include("libntfs-3g")} " \
+                            "-I#{formula_opt_include("lz4")}"
+    ENV.prepend "LDFLAGS", "-L#{formula_opt_lib("e2fsprogs")} -L#{formula_opt_lib("libntfs-3g")} " \
+                           "-L#{formula_opt_lib("lz4")}"
 
     system "./autogen"
     system "./configure", "--prefix=#{prefix}",
            "--disable-nls", "--disable-xxhash", "--disable-dependency-tracking",
            "--enable-extfs", "--enable-hfsp", "--enable-apfs", "--enable-fat",
-           "--enable-exfat", "--enable-minix", "--enable-zfs"
+           "--enable-exfat", "--enable-minix", "--enable-ntfs", "--enable-zfs"
     system "make"
     sbin.install "src/partclone.info", "src/partclone.dd", "src/partclone.restore",
                  "src/partclone.chkimg", "src/partclone.imager",
                  "src/partclone.extfs", "src/partclone.hfsp", "src/partclone.apfs",
                  "src/partclone.fat", "src/partclone.exfat", "src/partclone.minix",
-                 "src/partclone.zfs"
+                 "src/partclone.ntfs", "src/partclone.zfs"
     sbin.install_symlink "partclone.extfs" => "partclone.ext2"
     sbin.install_symlink "partclone.extfs" => "partclone.ext3"
     sbin.install_symlink "partclone.extfs" => "partclone.ext4"
@@ -95,6 +99,7 @@ class Partclone < Formula
     # The filesystem-specific dumpers are the reason the formula builds more
     # than restore, so at least check the main one is installed and runnable.
     assert_match version.to_s, shell_output("#{sbin}/partclone.extfs --version")
+    assert_match version.to_s, shell_output("#{sbin}/partclone.ntfs --version")
     assert_match version.to_s, shell_output("#{sbin}/partclone.zfs --version")
   end
 end
