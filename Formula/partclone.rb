@@ -102,8 +102,10 @@ class Partclone < Formula
     # available (CRC32 stays the default and is what unblob expects).
     system sbin/"partclone.imager", "-c", "-a3", "-s", testpath/"src.bin",
            "-o", testpath/"img-xxh.pcl", "-L", testpath/"partclone.log"
+    # partclone.info reports through log_mesg(..., log_stderr=1), so the text
+    # goes to stderr; shell_output only captures stdout, which would be empty.
     assert_match "XXH128",
-                 shell_output("#{sbin}/partclone.info -s #{testpath}/img-xxh.pcl -L #{testpath}/partclone.log")
+                 shell_output("#{sbin}/partclone.info -s #{testpath}/img-xxh.pcl -L #{testpath}/partclone.log 2>&1")
     system sbin/"partclone.chkimg", "-s", testpath/"img-xxh.pcl", "-L", testpath/"partclone.log"
 
     # The filesystem-specific dumpers are the reason the formula builds more
