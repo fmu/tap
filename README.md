@@ -214,20 +214,47 @@ sasquatch -version
 ### partclone
 
 [partclone](https://partclone.org/) backs up and restores the used blocks of a
-partition. unblob drives `partclone.restore` to unpack partclone images, so the
-formula builds the generic tools only; the filesystem-specific ones
-(`partclone.extfs`, `partclone.ntfs`, …) need libraries macOS does not have.
+partition. unblob drives `partclone.restore` to unpack partclone images; the
+filesystem-specific tools (`partclone.extfs`, `.zfs`, `.exfat`, ...) create
+them. The formula builds both, so dumps can be produced on macOS too.
 
-Upstream targets Linux: the Darwin patch guards `linux/fs.h` and `mntent.h`,
-uses `getmntinfo()` for the mount check, maps the Linux-only
-`O_LARGEFILE`/`O_DIRECT` flags to no-ops, and drops the Linux-only
-`ntfsfixboot` helper. The build itself uses the upstream autotools flow, with
-`openssl@3` and `zstd` providing the crypto and compressor it links.
+Supported backends: **ext2/3/4** (`partclone.extfs`, via Homebrew `e2fsprogs`),
+**FAT12/16/32** (`partclone.fat`), **exFAT** (`partclone.exfat`), **HFS+**
+(`partclone.hfsp`), **APFS** (`partclone.apfs`), **minix** (`partclone.minix`)
+and **ZFS** (`partclone.zfs`, the upstream 0.3.52 clean-room parser: stripe
+pool on a single vdev; Homebrew `lz4` plus e2fsprogs' blkid/uuid). The other
+upstream backends are not built: NTFS needs `ntfs-3g`, which Homebrew gates to
+Linux, and XFS/Btrfs/F2FS/reiserfs/reiser4/JFS/NILFS2/UFS/VMFS need Linux-only
+libraries or a substantial port.
+
+Upstream targets Linux, so the patch guards `linux/fs.h`, `mntent.h`,
+`malloc.h`, `linux/types.h` and `byteswap.h`/`endian.h`, provides a
+`be16toh`/`be32toh`/`be64toh` shim over `<libkern/OSByteOrder.h>`, uses
+`getmntinfo()` for the mount check, reads block-device sizes with
+`DKIOCGETBLOCK*`, maps the Linux-only `O_LARGEFILE`/`O_DIRECT` flags to no-ops,
+and drops the Linux-only `ntfsfixboot` helper. The build uses the upstream
+autotools flow, with `openssl@3`, `zstd`, `lz4` and keg-only `e2fsprogs`
+providing what it links (libext2fs links statically from the keg).
 
 ```bash
 brew install fmu/tap/partclone
 partclone.restore --version
+partclone.ext4 --version
 ```
+
+Dump an image file and put it back (non-root runs need an explicit `-L`, as
+the default logfile is `/var/log/partclone.log`; use `-W` if the restore target
+does not exist yet):
+
+```bash
+partclone.ext4 -c -s disk.img -o disk.partclone.img -L /tmp/partclone.log
+partclone.chkimg -s disk.partclone.img -L /tmp/partclone.log
+partclone.restore -W -s disk.partclone.img -o restored.img -L /tmp/partclone.log
+```
+
+Dumps are partclone image format 0002 with the default CRC32 + BIT bitmap;
+unblob detects and restores them (it invokes `partclone.restore -W ... -L
+/dev/stdout`), so the dumped images can be fed straight back to unblob.
 
 ### skippy
 

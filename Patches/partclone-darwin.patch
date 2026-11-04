@@ -1,6 +1,6 @@
 --- a/configure.ac
 +++ b/configure.ac
-@@ -72,7 +72,10 @@
+@@ -72,7 +72,10 @@ if test "$enable_static_linking" = yes; then
  fi
  
  dnl Check for uuid
@@ -12,7 +12,7 @@
  
  ## Intel ISA-L ##
  AC_ARG_ENABLE([isal],
-@@ -593,7 +596,10 @@
+@@ -593,7 +596,10 @@ save_LIBS="$LIBS"
  LIBS="$LIBS $OPENSSL_LIBS"
  AC_CHECK_FUNCS([EVP_MD_CTX_new EVP_MD_CTX_create EVP_MD_CTX_reset])
  LIBS="$save_LIBS"
@@ -24,7 +24,7 @@
  PKG_CHECK_MODULES([ZSTD], [libzstd],, [AC_MSG_ERROR([libzstd not found])])
  
  ##libm##
-@@ -603,8 +609,7 @@
+@@ -603,8 +609,7 @@ if test "$ac_cv_have_decl_isnormal" = "yes" ; then
  fi
  
  # fix bug #1093194
@@ -36,7 +36,7 @@
  AC_CHECK_FUNCS([memfd_create])
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
-@@ -139,7 +139,10 @@
+@@ -139,7 +139,10 @@ partclone_fat_CFLAGS=-DFAT
  partclone_fat_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
  endif
  
@@ -47,9 +47,102 @@
  partclone_ntfsfixboot_SOURCES=ntfsfixboot.c
  if ENABLE_NTFS
  sbin_PROGRAMS += partclone.ntfs
+--- a/src/apfsclone.c
++++ b/src/apfsclone.c
+@@ -16,13 +16,14 @@
+ #include <sys/stat.h>
+ #include <stdlib.h>
+ #include <stdint.h>
+-#include <malloc.h>
+ #include <stdarg.h>
+ #include <getopt.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <sys/types.h>
++#if defined(__linux__)
+ #include <linux/types.h>
++#endif
+ 
+ #include "partclone.h"
+ #include "apfsclone.h"
+--- a/src/apfsclone.h
++++ b/src/apfsclone.h
+@@ -21,8 +21,12 @@
+ #include <inttypes.h> 
+ #include <unistd.h> 
+ 
++#if defined(__linux__)
+ #include <byteswap.h>
+ #include <endian.h>
++#elif defined(__APPLE__)
++#include <libkern/OSByteOrder.h>
++#endif
+ // Swap to/from little endian.
+ //inline int16_t bswap_le(const int16_t x) { return x; }
+ //inline int32_t bswap_le(const int32_t x) { return x; }
+--- a/src/extfsclone.c
++++ b/src/extfsclone.c
+@@ -18,7 +18,6 @@
+ #include <stdlib.h>
+ #include <stdint.h>
+ #include <inttypes.h>
+-#include <malloc.h>
+ #include <stdarg.h>
+ #include <getopt.h>
+ #include <config.h>
+--- a/src/hfsplusclone.c
++++ b/src/hfsplusclone.c
+@@ -16,13 +16,14 @@
+ #include <sys/stat.h>
+ #include <stdlib.h>
+ #include <stdint.h>
+-#include <malloc.h>
+ #include <stdarg.h>
+ #include <getopt.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <sys/types.h>
++#if defined(__linux__)
+ #include <linux/types.h>
++#endif
+ #include <limits.h>
+ 
+ #include "partclone.h"
+--- a/src/info.c
++++ b/src/info.c
+@@ -12,7 +12,6 @@
+  */
+ 
+ #include <config.h>
+-#include <features.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <sys/stat.h>
+@@ -20,7 +19,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <stdint.h>
+-#include <malloc.h>
++#include <stdlib.h>
+ #include <stdarg.h>
+ #include <string.h>
+ 
+--- a/src/main.c
++++ b/src/main.c
+@@ -19,9 +19,8 @@
+ #define _LARGEFILE64_SOURCE
+ #endif
+ #include <errno.h>
+-#include <features.h>
+ #include <fcntl.h>
+-#include <malloc.h>
++#include <stdlib.h>
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #include <stdio.h>
 --- a/src/partclone.c
 +++ b/src/partclone.c
-@@ -19,29 +19,40 @@
+@@ -19,29 +19,44 @@
  #ifndef _LARGEFILE64_SOURCE
  #define _LARGEFILE64_SOURCE
  #endif
@@ -60,6 +153,10 @@
  #include <sys/statvfs.h>
  #include <sys/ioctl.h>
  #include <sys/mount.h>
++
++#if defined(__APPLE__)
++#include <sys/disk.h>
++#endif
 +
 +#if !defined(O_LARGEFILE)
 +#define O_LARGEFILE 0
@@ -92,7 +189,28 @@
  #include <sys/types.h>
  #include <dirent.h>
  #define _(STRING) gettext(STRING)
-@@ -1684,8 +1695,10 @@
+@@ -1275,6 +1290,20 @@ unsigned long long get_partition_size(int* ret) {
+ 		} else if (S_ISREG(stat.st_mode)) {
+ 			dest_size = stat.st_size;
+ 		} else {
++#if defined(__APPLE__)
++			{
++				uint32_t block_size = 0;
++				uint64_t block_count = 0;
++
++				if ((ioctl(*ret, DKIOCGETBLOCKSIZE, &block_size) == 0) &&
++				    (ioctl(*ret, DKIOCGETBLOCKCOUNT, &block_count) == 0) &&
++				    (block_size != 0)) {
++					dest_size = (unsigned long long)block_count * block_size;
++					log_mesg(1, 0, 0, debug, "get device size %llu by DKIOCGETBLOCKCOUNT,\n", dest_size);
++					return dest_size;
++				}
++			}
++#endif
+ #ifdef BLKGETSIZE64
+ 			if (ioctl(*ret, BLKGETSIZE64, &dest_size) < 0)
+ 				log_mesg(0, 0, 0, debug, "get device size error, Use option -C to disable size checking(Dangerous).\n");
+@@ -1684,8 +1713,10 @@ void load_image_bitmap(int* ret, cmd_opt opt, file_system_info fs_info, image_op
  int check_mount(const char* device, char* mount_p){
  
  	char *real_file = NULL, *real_fsname = NULL;
@@ -103,7 +221,7 @@
  	int isMounted = 0;
  
  	real_file = malloc(PATH_MAX + 1);
-@@ -1705,6 +1718,7 @@
+@@ -1705,6 +1736,7 @@ int check_mount(const char* device, char* mount_p){
  	    return -1;
  	}
  
@@ -111,7 +229,7 @@
  	if ((f = setmntent(MOUNTED, "r")) == 0) {
  		if (real_file){ free(real_file); real_file = NULL;}
  		if (real_fsname){ free(real_fsname); real_fsname = NULL;}
-@@ -1720,7 +1734,29 @@
+@@ -1720,6 +1752,28 @@ int check_mount(const char* device, char* mount_p){
  		}
  	}
  	endmntent(f);
@@ -120,7 +238,7 @@
 +		struct statfs *mntbuf;
 +		int mntcount = getmntinfo(&mntbuf, MNT_NOWAIT);
 +		int i;
- 
++
 +		if (mntcount <= 0) {
 +			if (real_file){ free(real_file); real_file = NULL;}
 +			if (real_fsname){ free(real_fsname); real_fsname = NULL;}
@@ -137,45 +255,12 @@
 +		}
 +	}
 +#endif
-+
+ 
  	if (real_file){ free(real_file); real_file = NULL;}
  	if (real_fsname){ free(real_fsname); real_fsname = NULL;}
- 	return isMounted;
---- a/src/main.c
-+++ b/src/main.c
-@@ -19,9 +19,8 @@
- #define _LARGEFILE64_SOURCE
- #endif
- #include <errno.h>
--#include <features.h>
- #include <fcntl.h>
--#include <malloc.h>
-+#include <stdlib.h>
- #include <sys/stat.h>
- #include <sys/types.h>
- #include <stdio.h>
---- a/src/info.c
-+++ b/src/info.c
-@@ -12,7 +12,6 @@
-  */
- 
- #include <config.h>
--#include <features.h>
- #include <fcntl.h>
- #include <unistd.h>
- #include <sys/stat.h>
-@@ -20,7 +19,7 @@
- #include <stdio.h>
- #include <stdlib.h>
- #include <stdint.h>
--#include <malloc.h>
-+#include <stdlib.h>
- #include <stdarg.h>
- #include <string.h>
- 
 --- a/src/partclone.h
 +++ b/src/partclone.h
-@@ -16,7 +16,7 @@
+@@ -16,12 +16,22 @@
  #include <sys/stat.h>
  #include <stdlib.h>
  #include <stdint.h>
@@ -184,3 +269,59 @@
  #include <stdarg.h>
  #include <getopt.h>
  #include <errno.h>
+ #include "bitmap.h"
+ 
++#if defined(__APPLE__)
++#include <libkern/OSByteOrder.h>
++#define be16toh(x) OSSwapBigToHostInt16(x)
++#define be32toh(x) OSSwapBigToHostInt32(x)
++#define be64toh(x) OSSwapBigToHostInt64(x)
++#define le16toh(x) OSSwapLittleToHostInt16(x)
++#define le32toh(x) OSSwapLittleToHostInt32(x)
++#define le64toh(x) OSSwapLittleToHostInt64(x)
++#endif
++
+ // SHA1 for torrent info
+ #include "torrent_helper.h"
+ 
+--- a/src/zfs/zfs_spa.c
++++ b/src/zfs/zfs_spa.c
+@@ -19,7 +19,11 @@
+ #include <sys/ioctl.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
++#if defined(__linux__)
+ #include <linux/fs.h>
++#elif defined(__APPLE__)
++#include <sys/disk.h>
++#endif
+ 
+ #include "zfs_disk.h"
+ #include "zfs_nvlist.h"
+@@ -329,12 +333,25 @@ zspa_open(zfs_spa_t **spa_out, const char *device,
+ 	}
+ 	if (fstat(spa->fd, &st) != 0)
+ 		goto fail;
++#if defined(__APPLE__)
++	if (S_ISCHR(st.st_mode)) {
++		uint32_t block_size = 0;
++		uint64_t block_count = 0;
++		if (ioctl(spa->fd, DKIOCGETBLOCKSIZE, &block_size) != 0 ||
++		    ioctl(spa->fd, DKIOCGETBLOCKCOUNT, &block_count) != 0 ||
++		    block_size == 0 || block_count == 0)
++			goto fail;
++		spa->psize = block_count * (uint64_t)block_size;
++	} else
++#else
+ 	if (S_ISBLK(st.st_mode)) {
+ 		uint64_t bytes = 0;
+ 		if (ioctl(spa->fd, BLKGETSIZE64, &bytes) != 0 || bytes == 0)
+ 			goto fail;
+ 		spa->psize = bytes;
+-	} else if (S_ISREG(st.st_mode)) {
++	} else
++#endif
++	if (S_ISREG(st.st_mode)) {
+ 		spa->psize = (uint64_t)st.st_size;
+ 	} else {
+ 		goto fail;
