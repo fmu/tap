@@ -173,11 +173,25 @@ def _pin_rea_tarball(formula: str, version: str, sha256: str) -> None:
     write(formula, text)
 
 
+def _drop_revision(formula: str) -> None:
+    """A revision repairs the release it was added for, not the next one."""
+    text = read(formula)
+    text, count = re.subn(r"(?m)^[ \t]*revision \d+\n", "", text)
+    if count:
+        write(formula, text)
+
+
 def pin_rea(version: str) -> None:
     """Pin Formula/rea.rb and the rea-full variant to one release."""
+    previous = _rea_pin()
     sha256 = download_sha256(NPM_TARBALL.format(version=version))
     _pin_rea_tarball(REA_FORMULA, version, sha256)
     _pin_rea_tarball(REA_FULL_FORMULA, version, sha256)
+    if previous != version:
+        # The revision that repaired the previous release must not make the new
+        # one rebuild for nothing (AGENTS.md).
+        for formula in (REA_FORMULA, REA_FULL_FORMULA):
+            _drop_revision(formula)
 
 
 def _formula_class_suffix(version: str) -> str:
