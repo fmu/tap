@@ -93,6 +93,16 @@ JDK from `JAVA_HOME`, then `PATH`, then Homebrew's `opt/openjdk`; if doctor
 complains, export `JAVA_HOME` for `openjdk@21` before `rea setup`. The
 `rea-full` launcher defaults `JAVA_HOME` to that release already.
 
+Swift note: REA compiles a small Swift helper with `xcrun` when it inspects a
+provider, so `rea doctor` needs a Swift compiler; the Command Line Tools
+provide one at `/usr/bin/swiftc`. A nix or direnv shell exports
+`DEVELOPER_DIR` and `SDKROOT` from nixpkgs' `apple-sdk`, which carries no Swift
+compiler, and that redirect makes the plain CLI fail with
+`error: tool 'swiftc' not found`. The `rea-full` launchers drop those two
+variables when they point into `/nix/store` (see below); the bare `rea` formula
+has no launcher, so a nix shell there needs `unset DEVELOPER_DIR SDKROOT` or
+`brew install rea-full`.
+
 ### rea-full
 
 `rea-full` is the one-command way to get REA with every optional integration
@@ -123,6 +133,13 @@ brew install fmu/tap/rea-full
 rea doctor --json              # finds the pinned Ghidra, Kuna and JADX engines
 rea setup                      # registers this launcher, settings included
 ```
+
+The launcher also drops `DEVELOPER_DIR` and `SDKROOT` when they point into
+`/nix/store`. A nix or direnv shell sets them from nixpkgs' `apple-sdk`, which
+has no Swift compiler; `xcrun` would follow that redirect and REA's Swift helper
+compile would fail with `error: tool 'swiftc' not found` even though the Command
+Line Tools provide `/usr/bin/swiftc`. Only nix-store values are dropped, so a
+deliberately selected Xcode keeps working.
 
 An `REA_*` variable that is already exported overrides the launcher's default,
 so pointing REA at another tool keeps working.
