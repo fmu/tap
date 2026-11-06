@@ -25,15 +25,15 @@
 # job, login item or privileged helper. The daemon the app manages is a child
 # process of the bundled CLI, not a service.
 cask "multica-desktop" do
-  version "0.8.0"
+  version "0.8.1"
 
   on_arm do
-    sha256 "0ba1c6eea177d897968df879965bf638fafcb8c953c9c3467c92d071aa42de6c"
+    sha256 "186d2d1c4d9bbbae17b7a5c72946b5f12f48a8a86fe28948128131f56e3f7d3c"
 
     url "https://github.com/multica-ai/multica/releases/download/v#{version}/multica-desktop-#{version}-mac-arm64.dmg"
   end
   on_intel do
-    sha256 "1507c3b14e934f6e85a8649f7125ae4a3c43a281353401bb0d2cc21a8e46dc09"
+    sha256 "e8f410f6494f08db3e163ffaa2b358b11381ed2372dbe6b6e0998fa6dbad3da8"
 
     url "https://github.com/multica-ai/multica/releases/download/v#{version}/multica-desktop-#{version}-mac-x64.dmg"
   end
