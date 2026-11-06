@@ -869,6 +869,38 @@ python3 scripts/bump/kuna.py              # latest Kuna, for the unversioned for
 python3 scripts/bump/rea.py --check       # verify the engine pin matrix
 ```
 
+## Bottles
+
+[`bottles.yml`](.github/workflows/bottles.yml) publishes pre-compiled bottles for
+the four source-built formulae (`libntfs-3g`, `partclone`, `sasquatch`,
+`unblob`) as assets of this repository's `bottles` GitHub release. `brew install`
+uses them automatically, so the C builds and the Python wheel install become
+downloads instead of local compiles.
+
+The workflow runs on `macos-26` and is dispatched by
+[`bump-upstream.yml`](.github/workflows/bump-upstream.yml) when a bump moves one
+of the four, and by pushes that touch their formulae or patches. It rebuilds all
+four together (partclone links libntfs-3g), tests the source builds, bottles
+them, uploads the assets, installs the published bottles on a clean runner to
+check that they pour, and only then commits the regenerated `bottle do` blocks.
+A manual run:
+
+```bash
+gh workflow run bottles.yml
+```
+
+Bottles are matched by the macOS major they were built on, with a fallback to a
+bottle built for an older macOS: the stable `macos-26` build serves macOS 26 and
+27, so the workflow pins that image even though GitHub also offers a macOS 27
+preview (`xcode-27`). macOS 15 users build from source. `libntfs-3g`, `partclone`
+and `sasquatch` bottle with a relocatable cellar; `unblob`'s bottle is tied to
+the default `/opt/homebrew` prefix, where `brew install` uses it, and other
+prefixes build from source.
+
+The workflow owns the `bottle do` blocks. Do not commit a block by hand, and drop
+it (the bump scripts do that automatically) if a version or `revision` bump
+changes what the formula installs before the workflow has republished it.
+
 ## Development
 
 Formulae are under `Formula/` and casks under `Casks/`; both are plain Ruby

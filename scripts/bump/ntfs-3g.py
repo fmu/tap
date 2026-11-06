@@ -14,6 +14,7 @@ import re
 
 from _common import (
     download_sha256,
+    drop_bottle_block,
     fail,
     latest_tag,
     pinned_version,
@@ -62,6 +63,7 @@ def main() -> None:
         if count != 1:
             fail(f"{formula}: expected one tagged source archive URL, found {count}")
         text = replace_sha_after_url(text, f"{tag}.tar.gz", sha256, formula)
+        text = drop_bottle_block(text, formula)
         write(formula, text)
         report(formula_name(formula), pinned, version)
 

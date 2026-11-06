@@ -32,6 +32,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 USER_AGENT = "fmu-homebrew-bump"
 
 _VERSION_STANZA = re.compile(r'(?m)^(\s*)version "[^"]+"$')
+_BOTTLE_BLOCK = re.compile(r"(?ms)\n  bottle do\n.*?^  end\n")
 
 
 def fail(message: str) -> None:
@@ -47,6 +48,21 @@ def write(relpath: str, text: str) -> None:
     path = ROOT / relpath
     if path.read_text(encoding="utf-8") != text:
         path.write_text(text, encoding="utf-8")
+
+
+def drop_bottle_block(text: str, where: str) -> str:
+    """Remove the `bottle do` block when a formula's version moves.
+
+    The bottle workflow owns that block and regenerates it from the assets it
+    publishes. A block left behind by a version or revision bump pins a checksum
+    for a bottle URL that carries the new package version, which does not exist
+    yet: `brew install` would fail with a 404 instead of building from source
+    until the bottle workflow finished.
+    """
+    text, count = _BOTTLE_BLOCK.subn("", text)
+    if count > 1:
+        fail(f"{where}: found {count} bottle blocks; expected at most one")
+    return text
 
 
 def _json(url: str) -> dict:

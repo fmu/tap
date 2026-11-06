@@ -1,0 +1,205 @@
+name: bottles
+
+# Build this tap's source-built formulae as pre-compiled bottles, publish them
+# to the repository's GitHub Releases, and commit the regenerated
+# `bottle do` blocks. `brew install` downloads a bottle instead of compiling
+# when the formula has one for the current platform, which covers the C builds
+# (libntfs-3g, partclone, sasquatch) and the Python/wheel install (unblob).
+#
+# Bottles are matched by the macOS version they were built on, with a fallback
+# to a bottle built for an older macOS (Homebrew's
+# Utils::Bottles::Collector#find_older_compatible_tag). The bottle built on
+# macOS 26 (the stable `macos-26` arm64 image) is therefore used on macOS 26 and
+# 27. macOS 15 users build from source; GitHub hosts an arm64 `macos-15` image
+# and a macOS 27 preview image (`xcode-27`), but adding either also needs a
+# matching verification runner in the publish job, because that job pours the
+# bottles it built.
+#
+# This workflow owns the `bottle do` blocks: it rebuilds them from the assets it
+# uploads, so a formula must not carry a block for a version or revision it was
+# not built for. The bump scripts drop the block when upstream moves; a
+# hand-made repair that changes `revision` must drop it too (see AGENTS.md).
+#
+# All four formulae are rebuilt together on purpose: partclone links against
+# libntfs-3g, so a libntfs-3g library bump must rebuild partclone's bottle, and
+# rebuilding the set keeps every bottle consistent with the tap's dependencies.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Formula/libntfs-3g.rb"
+      - "Formula/partclone.rb"
+      - "Formula/sasquatch.rb"
+      - "Formula/unblob.rb"
+      - "Patches/partclone-darwin.patch"
+      - "Patches/sasquatch-darwin.patch"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bottles
+  cancel-in-progress: false
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  # All bottles live in one release; asset names carry the formula version, so
+  # publishing a new version adds assets instead of replacing the ones current
+  # installs are using. The name is not a version tag on purpose: it holds the
+  # assets for every bottled version the tap has published.
+  BOTTLE_ROOT_URL: https://github.com/fmu/tap/releases/download/bottles
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Bottles describe main; a manual dispatch from another branch
+          # still builds and commits what users install.
+          ref: main
+      - uses: Homebrew/actions/setup-homebrew@main
+      - name: Tap this checkout
+        run: |
+          brew tap fmu/tap "file://${GITHUB_WORKSPACE}"
+          brew trust fmu/tap
+      - name: Build the bottles
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}"
+          mkdir -p bottles
+          cd bottles
+
+          # Install every formula with --build-bottle in dependency order
+          # (partclone links libntfs-3g, unblob drives partclone and
+          # sasquatch) and test the source build before packaging it.
+          for name in libntfs-3g sasquatch partclone unblob; do
+            brew install --build-bottle "fmu/tap/$name"
+            brew test "fmu/tap/$name"
+          done
+
+          for name in libntfs-3g sasquatch partclone unblob; do
+            # --no-rebuild keeps the bottle at rebuild 0: a change to installed
+            # files already bumps `revision` (AGENTS.md), which changes the
+            # package version and therefore the bottle filename.
+            brew bottle --json --no-rebuild --root-url="${BOTTLE_ROOT_URL}" "fmu/tap/$name"
+          done
+          ls -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottles
+          path: |
+            ${{ runner.temp }}/bottles/*.bottle.tar.gz
+            ${{ runner.temp }}/bottles/*.bottle.json
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Bottles describe main; a manual dispatch from another branch
+          # still builds and commits what users install.
+          ref: main
+      - uses: Homebrew/actions/setup-homebrew@main
+      - name: Tap this checkout
+        run: |
+          brew tap fmu/tap "file://${GITHUB_WORKSPACE}"
+          brew trust fmu/tap
+      - name: Download the bottles
+        uses: actions/download-artifact@v4
+        with:
+          name: bottles
+          path: ${{ runner.temp }}/bottles
+      - name: Merge the bottle metadata into the tap
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/bottles"
+          ls -l
+
+          # `brew bottle --merge` reads the previous bottle block relative to
+          # the tap's origin/HEAD when deciding whether to increment `rebuild`;
+          # a file:// tap clone does not always get that ref.
+          tap="$(brew --repository fmu/tap)"
+          git -C "$tap" remote set-head origin --auto >/dev/null 2>&1 || true
+
+          brew bottle --merge --write --no-commit *.bottle.json
+      - name: Audit the bottled formulae
+        run: |
+          set -euo pipefail
+          for name in libntfs-3g sasquatch partclone unblob; do
+            brew audit --strict "fmu/tap/$name"
+          done
+      - name: Copy the bottle blocks into the checkout
+        run: |
+          set -euo pipefail
+          tap="$(brew --repository fmu/tap)"
+          for name in libntfs-3g sasquatch partclone unblob; do
+            cp "$tap/Formula/$name.rb" "Formula/$name.rb"
+          done
+          git diff --stat
+      - name: Replace matching assets from an earlier attempt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/bottles"
+          if ! gh release view bottles --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            exit 0
+          fi
+          python3 - <<'PY' > "${RUNNER_TEMP}/assets.txt"
+          import glob
+          import json
+
+          for path in glob.glob("*.bottle.json"):
+              for formula in json.load(open(path, encoding="utf-8")).values():
+                  for tag in formula["bottle"]["tags"].values():
+                      print(tag["filename"])
+          PY
+          # A re-run rebuilds the same version, so the asset names collide.
+          # Normal version bumps add new names and leave current installs alone.
+          while IFS= read -r asset; do
+            gh release delete-asset bottles "$asset" --repo "$GITHUB_REPOSITORY" --yes >/dev/null 2>&1 || true
+          done < "${RUNNER_TEMP}/assets.txt"
+      - name: Upload the bottles
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/bottles"
+          brew pr-upload --upload-only
+      - name: Verify the published bottles
+        run: |
+          set -euo pipefail
+          # Install from the live release in dependency order and run each
+          # formula's own test, so a bottle that does not pour blocks the
+          # bottle-block commit instead of only failing for users.
+          for name in libntfs-3g sasquatch partclone unblob; do
+            brew install --force-bottle "fmu/tap/$name"
+            brew test "fmu/tap/$name"
+          done
+      - name: Commit the bottle blocks
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula
+          if git diff --cached --quiet; then
+            echo "no bottle block changes"
+            exit 0
+          fi
+          {
+            echo "bottles: publish libntfs-3g, partclone, sasquatch, unblob"
+            echo
+            git diff --cached --stat
+          } > "${RUNNER_TEMP}/message"
+          git commit -F "${RUNNER_TEMP}/message"
+          # The bump workflow may have pushed while this run was building.
+          git pull --rebase origin main
+          git push origin main

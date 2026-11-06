@@ -232,6 +232,15 @@ jobs:
             | sed -e 's|.*/||' -e 's/\.rb$//' \
             | paste -sd' ' -)"
           echo "BUMPED_PACKAGES=${bumped_names}" >> "$GITHUB_ENV"
+          # The source-built formulae are published as bottles by bottles.yml;
+          # remember them so that workflow can be dispatched when one moved.
+          bottled_names=""
+          for name in $bumped_names; do
+            case "$name" in
+              libntfs-3g|partclone|sasquatch|unblob) bottled_names+=" $name" ;;
+            esac
+          done
+          echo "BOTTLED_PACKAGES=${bottled_names# }" >> "$GITHUB_ENV"
           {
             echo "upstream: bump ${packages}"
             echo
@@ -248,3 +257,16 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: gh workflow run ci.yml --ref main --repo "$GITHUB_REPOSITORY" \
           -f packages="$BUMPED_PACKAGES"
+
+      # The CI dispatch installs whatever bottles exist, it does not build new
+      # ones. Rebuild the bottles when a bump moved one of the source-built
+      # formulae; bottles.yml rebuilds all four together because partclone
+      # links libntfs-3g.
+      - name: Build bottles for the bumped source packages
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          if [ -z "${BOTTLED_PACKAGES:-}" ]; then
+            echo "no bottled package moved; not rebuilding bottles"
+            exit 0
+          fi
+          gh workflow run bottles.yml --ref main --repo "$GITHUB_REPOSITORY"

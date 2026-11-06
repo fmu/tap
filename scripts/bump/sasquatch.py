@@ -11,11 +11,11 @@ import re
 
 from _common import (
     download_sha256,
+    drop_bottle_block,
     fail,
     latest_tag,
     pinned_version,
     read,
-    replace_sha_after_url,
     report,
     set_version_stanza,
     write,
@@ -51,9 +51,18 @@ def main() -> None:
     if count != 1:
         fail(f"{FORMULA}: expected one tagged source archive URL, found {count}")
     # Homebrew would read the version from the tag as "6", so the formula pins
-    # the release tag explicitly.
+    # the release tag explicitly. That `version` line sits between the `url` and
+    # the `sha256`, so `replace_sha_after_url` (which expects them adjacent)
+    # cannot be used here.
+    text, count = re.subn(
+        r'(  url "[^"\n]*\.tar\.gz"\n  version "[^"]+"\n  sha256 ")([0-9a-f]{64})(")',
+        lambda match: match.group(1) + sha256 + match.group(3),
+        text,
+    )
+    if count != 1:
+        fail(f"{FORMULA}: expected one sha256 after the version stanza, found {count}")
     text = set_version_stanza(text, version, FORMULA)
-    text = replace_sha_after_url(text, f"{tag}.tar.gz", sha256, FORMULA)
+    text = drop_bottle_block(text, FORMULA)
 
     write(FORMULA, text)
     report("sasquatch", pinned, version)

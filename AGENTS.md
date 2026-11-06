@@ -27,3 +27,16 @@ keg until they happen to run `brew reinstall` themselves.
   lands; for `rea`/`rea-full`, `scripts/bump/rea.py` drops it automatically.
 - Version-only bumps from `scripts/bump/` need no revision; they already change
   `version`.
+
+## Bottled formulae must not keep a stale `bottle do` block
+
+`libntfs-3g`, `partclone`, `sasquatch` and `unblob` are published as bottles by
+[`bottles.yml`](.github/workflows/bottles.yml); that workflow owns their
+`bottle do` blocks and regenerates them from the assets it uploads. A block left
+behind when `version` or `revision` moves pins a checksum for a bottle URL that
+carries the new package version, which does not exist until the workflow has
+rebuilt it: `brew install` would fail with a 404 instead of building from source.
+
+- Version bumps through `scripts/bump/` drop the block automatically.
+- A hand-made repair that bumps `revision` must drop the block by hand.
+- Do not write a block by hand; dispatch `bottles.yml` to publish new bottles.

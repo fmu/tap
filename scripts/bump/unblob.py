@@ -24,6 +24,7 @@ import tempfile
 import urllib.request
 
 from _common import (
+    drop_bottle_block,
     fail,
     pinned_version,
     read,
@@ -146,6 +147,8 @@ def main() -> None:
     )
     if count != 1:
         fail(f"{FORMULA}: expected one sha256 after the version stanza, found {count}")
+
+    text = drop_bottle_block(text, FORMULA)
 
     start = text.find(_BEGIN)
     end = text.find(_END)
