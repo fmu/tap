@@ -30,7 +30,8 @@ keg until they happen to run `brew reinstall` themselves.
 
 ## Bottled formulae must not keep a stale `bottle do` block
 
-`libntfs-3g`, `partclone`, `sasquatch` and `unblob` are published as bottles by
+`libntfs-3g`, `ntfsprogs`, `partclone`, `sasquatch`, `ghidra@12.1`,
+`ghidra-mcp` and `unblob` are published as bottles by
 [`bottles.yml`](.github/workflows/bottles.yml); that workflow owns their
 `bottle do` blocks and regenerates them from the assets it uploads. A block left
 behind when `version` or `revision` moves pins a checksum for a bottle URL that
@@ -40,3 +41,6 @@ rebuilt it: `brew install` would fail with a 404 instead of building from source
 - Version bumps through `scripts/bump/` drop the block automatically.
 - A hand-made repair that bumps `revision` must drop the block by hand.
 - Do not write a block by hand; dispatch `bottles.yml` to publish new bottles.
+- `Formula/ghidra@12.1.rb` is pinned by hand, so drop its block by hand when the
+  pin moves. A change there also rebuilds `ghidra-mcp`'s bottle, which targets
+  that keg.

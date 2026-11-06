@@ -872,34 +872,43 @@ python3 scripts/bump/rea.py --check       # verify the engine pin matrix
 ## Bottles
 
 [`bottles.yml`](.github/workflows/bottles.yml) publishes pre-compiled bottles for
-the four source-built formulae (`libntfs-3g`, `partclone`, `sasquatch`,
-`unblob`) as assets of this repository's `bottles` GitHub release. `brew install`
-uses them automatically, so the C builds and the Python wheel install become
-downloads instead of local compiles.
+the tap's source-built formulae (`libntfs-3g`, `ntfsprogs`, `partclone`,
+`sasquatch`, `ghidra@12.1`, `ghidra-mcp`, `unblob`) as assets of this
+repository's `bottles` GitHub release. `brew install` uses them automatically, so
+the C builds, the pinned Ghidra keg, the Ghidra MCP venv and the Python wheel
+install become downloads instead of local compiles.
 
-The workflow runs on `macos-26` and is dispatched by
+Only the current stable macOS is bottled: the workflow pins `macos-26`, today's
+latest stable arm64 image, and Homebrew's older-macOS fallback serves that bottle
+on macOS 27 as well. Older macOS releases build from source.
+
+The workflow is dispatched by
 [`bump-upstream.yml`](.github/workflows/bump-upstream.yml) when a bump moves one
-of the four, and by pushes that touch their formulae or patches. It rebuilds all
-four together (partclone links libntfs-3g), tests the source builds, bottles
-them, uploads the assets, installs the published bottles on a clean runner to
-check that they pour, and only then commits the regenerated `bottle do` blocks.
-A manual run:
+of them, and by pushes that touch their formulae or patches. It rebuilds all
+seven together (partclone links libntfs-3g; ghidra-mcp's extension and venv
+target the pinned ghidra@12.1 keg), tests the source builds, bottles them,
+uploads the assets, installs the published bottles on a clean runner to check
+that they pour, and only then commits the regenerated `bottle do` blocks. A
+manual run:
 
 ```bash
 gh workflow run bottles.yml
 ```
 
+The release is a cache, not an archive: after a successful publish the workflow
+prunes every asset that the committed bottle blocks no longer reference, so it
+holds only the current bottles. That matters for `ghidra@12.1`, whose bottle is
+about 543 MB (well inside GitHub's 2 GB per-asset limit and the job timeouts).
+
 Bottles are matched by the macOS major they were built on, with a fallback to a
-bottle built for an older macOS: the stable `macos-26` build serves macOS 26 and
-27, so the workflow pins that image even though GitHub also offers a macOS 27
-preview (`xcode-27`). macOS 15 users build from source. `libntfs-3g`, `partclone`
-and `sasquatch` bottle with a relocatable cellar; `unblob`'s bottle is tied to
-the default `/opt/homebrew` prefix, where `brew install` uses it, and other
-prefixes build from source.
+bottle built for an older macOS. A bottle whose cellar is not relocatable is only
+poured into the default `/opt/homebrew` prefix (that is the case for `unblob`);
+other prefixes build from source.
 
 The workflow owns the `bottle do` blocks. Do not commit a block by hand, and drop
 it (the bump scripts do that automatically) if a version or `revision` bump
 changes what the formula installs before the workflow has republished it.
+`ghidra@12.1` is pinned by hand, so drop its block by hand when the pin moves.
 
 ## Development
 

@@ -28,6 +28,7 @@ import zipfile
 from _common import (
     USER_AGENT,
     asset_sha256,
+    drop_bottle_block,
     fail,
     latest_tag,
     pinned_version,
@@ -217,6 +218,7 @@ def main() -> None:
 
     text = _set_release_url(text, tag, version, FORMULA)
     text = replace_sha_after_url(text, "GhidraMCP-release-", sha256, FORMULA)
+    text = drop_bottle_block(text, FORMULA)
     write(FORMULA, text)
     report("ghidra-mcp", pinned, version)
 

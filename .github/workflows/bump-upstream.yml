@@ -237,7 +237,7 @@ jobs:
           bottled_names=""
           for name in $bumped_names; do
             case "$name" in
-              libntfs-3g|partclone|sasquatch|unblob) bottled_names+=" $name" ;;
+              libntfs-3g|ntfsprogs|partclone|sasquatch|ghidra-mcp|unblob) bottled_names+=" $name" ;;
             esac
           done
           echo "BOTTLED_PACKAGES=${bottled_names# }" >> "$GITHUB_ENV"

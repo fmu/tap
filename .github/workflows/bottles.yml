@@ -4,33 +4,40 @@ name: bottles
 # to the repository's GitHub Releases, and commit the regenerated
 # `bottle do` blocks. `brew install` downloads a bottle instead of compiling
 # when the formula has one for the current platform, which covers the C builds
-# (libntfs-3g, partclone, sasquatch) and the Python/wheel install (unblob).
+# (libntfs-3g, ntfsprogs, partclone, sasquatch), the pinned Ghidra keg plus
+# ghidra-mcp's Python venv, and unblob's Python/wheel install.
 #
-# Bottles are matched by the macOS version they were built on, with a fallback
-# to a bottle built for an older macOS (Homebrew's
-# Utils::Bottles::Collector#find_older_compatible_tag). The bottle built on
-# macOS 26 (the stable `macos-26` arm64 image) is therefore used on macOS 26 and
-# 27. macOS 15 users build from source; GitHub hosts an arm64 `macos-15` image
-# and a macOS 27 preview image (`xcode-27`), but adding either also needs a
-# matching verification runner in the publish job, because that job pours the
-# bottles it built.
+# Only the current stable macOS is bottled: the workflow pins `macos-26`, today's
+# latest stable arm64 image, and Homebrew's older-macOS fallback serves that
+# bottle on macOS 27 too. Older macOS releases build from source.
 #
 # This workflow owns the `bottle do` blocks: it rebuilds them from the assets it
 # uploads, so a formula must not carry a block for a version or revision it was
 # not built for. The bump scripts drop the block when upstream moves; a
-# hand-made repair that changes `revision` must drop it too (see AGENTS.md).
+# hand-made repair that changes `version` or `revision` must drop it too (see
+# AGENTS.md).
 #
-# All four formulae are rebuilt together on purpose: partclone links against
-# libntfs-3g, so a libntfs-3g library bump must rebuild partclone's bottle, and
-# rebuilding the set keeps every bottle consistent with the tap's dependencies.
+# All seven formulae are rebuilt together on purpose: partclone links against
+# libntfs-3g, ghidra-mcp's extension and venv target the pinned ghidra@12.1 keg,
+# and rebuilding the set keeps every bottle consistent with the tap's
+# dependencies.
+#
+# ghidra@12.1 is the large one: its bottle is about 543 MB, still well inside
+# GitHub's 2 GB per-asset limit and the job timeouts, and it is what makes
+# ghidra-mcp installs fast. The publish job keeps only the bottles it just
+# built and prunes older release assets, so the `bottles` release does not grow
+# into a version history.
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
       - "Formula/libntfs-3g.rb"
+      - "Formula/ntfsprogs.rb"
       - "Formula/partclone.rb"
       - "Formula/sasquatch.rb"
+      - "Formula/ghidra-mcp.rb"
+      - "Formula/ghidra@12.1.rb"
       - "Formula/unblob.rb"
       - "Patches/partclone-darwin.patch"
       - "Patches/sasquatch-darwin.patch"
@@ -76,13 +83,14 @@ jobs:
 
           # Install every formula with --build-bottle in dependency order
           # (partclone links libntfs-3g, unblob drives partclone and
-          # sasquatch) and test the source build before packaging it.
-          for name in libntfs-3g sasquatch partclone unblob; do
+          # sasquatch, ghidra-mcp targets the ghidra@12.1 keg) and test the
+          # source build before packaging it.
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
             brew install --build-bottle "fmu/tap/$name"
             brew test "fmu/tap/$name"
           done
 
-          for name in libntfs-3g sasquatch partclone unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
             # --no-rebuild keeps the bottle at rebuild 0: a change to installed
             # files already bumps `revision` (AGENTS.md), which changes the
             # package version and therefore the bottle filename.
@@ -95,6 +103,11 @@ jobs:
           path: |
             ${{ runner.temp }}/bottles/*.bottle.tar.gz
             ${{ runner.temp }}/bottles/*.bottle.json
+          # The bottles are already gzipped; recompressing them only burns
+          # runner time on the 543 MB ghidra bottle. Keep the transient
+          # artifact for a day.
+          compression-level: 0
+          retention-days: 1
           if-no-files-found: error
 
   publish:
@@ -133,14 +146,14 @@ jobs:
       - name: Audit the bottled formulae
         run: |
           set -euo pipefail
-          for name in libntfs-3g sasquatch partclone unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
             brew audit --strict "fmu/tap/$name"
           done
       - name: Copy the bottle blocks into the checkout
         run: |
           set -euo pipefail
           tap="$(brew --repository fmu/tap)"
-          for name in libntfs-3g sasquatch partclone unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
             cp "$tap/Formula/$name.rb" "Formula/$name.rb"
           done
           git diff --stat
@@ -180,7 +193,7 @@ jobs:
           # Install from the live release in dependency order and run each
           # formula's own test, so a bottle that does not pour blocks the
           # bottle-block commit instead of only failing for users.
-          for name in libntfs-3g sasquatch partclone unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
             brew install --force-bottle "fmu/tap/$name"
             brew test "fmu/tap/$name"
           done
@@ -195,7 +208,7 @@ jobs:
             exit 0
           fi
           {
-            echo "bottles: publish libntfs-3g, partclone, sasquatch, unblob"
+            echo "bottles: publish libntfs-3g, ntfsprogs, partclone, ghidra@12.1, ghidra-mcp, sasquatch, unblob"
             echo
             git diff --cached --stat
           } > "${RUNNER_TEMP}/message"
@@ -203,3 +216,33 @@ jobs:
           # The bump workflow may have pushed while this run was building.
           git pull --rebase origin main
           git push origin main
+      - name: Keep only the current bottles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/bottles"
+
+          # The release is a cache of the bottles the committed formulae point
+          # at, not an archive: prune every asset that this run did not publish
+          # so the 543 MB ghidra bottle is not kept per version.
+          python3 - <<'PY' > "${RUNNER_TEMP}/current-assets.txt"
+          import glob
+          import json
+
+          for path in glob.glob("*.bottle.json"):
+              for formula in json.load(open(path, encoding="utf-8")).values():
+                  for tag in formula["bottle"]["tags"].values():
+                      print(tag["filename"])
+          PY
+
+          if ! gh release view bottles --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[].name' > "${RUNNER_TEMP}/release-assets.txt"; then
+            exit 0
+          fi
+          while IFS= read -r asset; do
+            [ -n "$asset" ] || continue
+            grep -qxF "$asset" "${RUNNER_TEMP}/current-assets.txt" && continue
+            echo "removing stale bottle asset: $asset"
+            gh release delete-asset bottles "$asset" --repo "$GITHUB_REPOSITORY" --yes
+          done < "${RUNNER_TEMP}/release-assets.txt"
