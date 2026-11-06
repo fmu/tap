@@ -32,6 +32,7 @@ brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stre
 brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
 brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
+brew install --cask fmu/tap/multica-desktop  # links the bundled multica CLI; CLI-only: multica-ai/tap/multica
 ```
 
 ## Formulae
@@ -697,10 +698,10 @@ a tap whose REA and Ghidra pins disagree.
 
 ## Casks
 
-None of these casks is in homebrew-cask. `baocut` and `iqualize` simply have no
-homebrew-cask entry; the other three fail homebrew-cask's notarization
-requirement, and their casks carry the one-time Gatekeeper workaround as a
-caveat.
+None of these casks is in homebrew-cask. `baocut`, `iqualize` and
+`multica-desktop` simply have no homebrew-cask entry; `mornye`, `mpv-app` and
+`pared-app` fail homebrew-cask's notarization requirement, and their casks carry
+the one-time Gatekeeper workaround as a caveat.
 
 ### baocut
 
@@ -771,6 +772,41 @@ must not be installed next to it. The linked binary sits outside the bundle, so
 the bundled Vulkan loader cannot find its MoltenVK ICD from it — launch the app
 for `vo=gpu-next`, or point `VK_ICD_FILENAMES` at the bundled ICD.
 
+### multica-desktop
+
+[Multica](https://multica.ai/) is an agent workspace: you assign an issue to an
+AI coding agent the way you would to a teammate, the agent picks it up on a
+runtime you control, and the run, comments and result stay attached to the
+issue. The desktop app is the native client for that workspace, on top of the
+same web UI. Upstream signs and notarizes it, so like `baocut` and `iqualize` it
+needs no Gatekeeper caveat. It has no homebrew-cask entry yet, which is why it
+lives in this tap.
+
+```bash
+brew install --cask fmu/tap/multica-desktop
+open -a Multica
+multica version          # the CLI copy linked out of the app bundle
+```
+
+The app updates itself with electron-updater, so `brew upgrade` defers to it;
+the scheduled bump keeps the tap's pin current for fresh installs. The bundle
+ships a `multica` CLI from the same release — it is what the app runs for its
+managed daemon — and the cask links that copy into the prefix, so `multica`
+works in a terminal and follows the app through its own updates. Upstream also
+publishes the CLI as a standalone package in its own tap; that is the route for
+a machine that does not want the desktop app, and it owns the same command, so
+install one or the other:
+
+```bash
+brew install multica-ai/tap/multica      # CLI only
+```
+
+The app keeps its per-service daemon profile under
+`~/.multica/profiles/desktop-<host>/`, next to — but separate from — the
+standalone CLI's default profile in `~/.multica/`; both packages read the same
+directory, but neither reads the other's profile. `zap` therefore removes only
+the files the cask owns.
+
 ### pared-app
 
 [Pared](https://github.com/4evy/pared) chooses which Apple Intelligence features
@@ -825,6 +861,7 @@ everything.
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
+| `multica-desktop` | `multica-ai/multica` | `v*` |
 | `pared` + `pared-app` | `4evy/pared` | no `v` prefix |
 
 Two things are coupled rather than independent:
@@ -943,6 +980,6 @@ brew audit --strict fmu/audit/gbrain fmu/audit/qwen3-embed \
   fmu/audit/ghidra-mcp fmu/audit/rea \
   fmu/audit/skippy fmu/audit/mesh-llm
 brew audit --strict --cask fmu/audit/iqualize fmu/audit/mornye \
-  fmu/audit/mpv-app fmu/audit/pared-app
+  fmu/audit/mpv-app fmu/audit/multica-desktop fmu/audit/pared-app
 brew untap fmu/audit
 ```
