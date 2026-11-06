@@ -32,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, multica-desktop, ntfs-3g, pared, partclone, rea, sasquatch, skippy, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
+        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, multica-desktop, ntfs-3g, pared, partclone, rea, sasquatch, serena, skippy, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
         required: false
         default: "all"
       tag:
@@ -112,6 +112,14 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/sasquatch.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump serena
+        # The formula follows oraios/serena's tags and regenerates its Python
+        # resources from the tag's uv.lock; see scripts/bump/serena.py.
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'serena'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/serena.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Bump skippy
         # Skippy's CLI is only attached to the rolling-preview releases, so

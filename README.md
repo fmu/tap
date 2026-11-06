@@ -25,6 +25,7 @@ brew install fmu/tap/mesh-llm      # distributed LLM mesh runtime (Apple silicon
 brew install fmu/tap/jadx-headless-mcp  # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/kuna         # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
+brew install fmu/tap/serena        # semantic code retrieval/editing MCP toolkit (uvx language servers)
 brew install fmu/tap/gbrain fmu/tap/qwen3-embed
 brew install fmu/tap/designcraft-cli  # the headless DesignCraft engine (matches the app cask)
 brew install fmu/tap/figcraft-cli  # the headless FigCraft engine (matches the app cask)
@@ -508,6 +509,35 @@ when that repository is tagged. The current pin is `v0.4.1`: `v0.4.0` split
 the gbrain integration out of `setup` into `setup-gbrain`, and `v0.4.1`
 corrects the tap name in the project README.
 
+### serena
+
+[Serena](https://github.com/oraios/serena) is the MCP toolkit that gives a
+coding agent IDE-level, symbol-aware retrieval and editing: it runs a language
+server per project and exposes the results as MCP tools. The formula installs
+the Python application from the tagged source tree, and its Python dependencies
+are generated from that release's own `uv.lock`, so an upgrade installs the
+versions upstream tests instead of a fresh resolution.
+
+```bash
+brew install fmu/tap/serena
+serena init
+serena setup claude     # or: codex; `serena setup --help` lists the clients
+```
+
+The MCP launcher is `serena start-mcp-server`; a client that is configured by
+hand uses `<prefix>/bin/serena start-mcp-server --context <client>`. Language
+servers are not bundled: `uv` is a dependency, and SolidLSP launches pyright
+through `uvx` for Python on first use, while other languages need their own
+toolchain (node/npm for TypeScript, a JDK for Java, ...). Serena's state lives
+under `~/.serena` (override with `SERENA_HOME`); SolidLSP and uv cache their
+downloads under `~/.solidlsp` and uv's data directory. The optional dashboard's
+pywebview/pystray dependencies are installed with the rest.
+
+`scripts/bump/serena.py` follows the `oraios/serena` tags, rewrites the tag and
+commit revision, and regenerates the PyPI resource block from the release's
+`uv.lock`. It fails rather than pinning a release whose lock no longer supports
+the formula's `python@3.14`.
+
 ### designcraft-cli
 
 The headless half of [DesignCraft](https://getartcraft.com/apps/designcraft),
@@ -846,6 +876,7 @@ everything.
 | `kuna` (latest; REA uses `kuna@<REA pin>`) | `Noelo-Lab/kuna` | `v*` |
 | `unblob` | `onekey-sec/unblob` | PyPI `unblob` release (wheels) |
 | `sasquatch` | `onekey-sec/sasquatch` | `sasquatch-v*` |
+| `serena` | `oraios/serena` | `v*` (Python resources from the tag's `uv.lock`) |
 | `partclone` | `Thomas-Tsai/partclone` | `<version>` |
 | `ntfs-3g` (`libntfs-3g` + `ntfsprogs`) | `tuxera/ntfs-3g` | `<version>` |
 | `skippy` | `Mesh-LLM/mesh-llm` | rolling preview with a `skippy` CLI asset |
@@ -910,10 +941,10 @@ python3 scripts/bump/rea.py --check       # verify the engine pin matrix
 
 [`bottles.yml`](.github/workflows/bottles.yml) publishes pre-compiled bottles for
 the tap's source-built formulae (`libntfs-3g`, `ntfsprogs`, `partclone`,
-`sasquatch`, `ghidra@12.1`, `ghidra-mcp`, `unblob`) as assets of this
+`sasquatch`, `ghidra@12.1`, `ghidra-mcp`, `unblob`, `serena`) as assets of this
 repository's `bottles` GitHub release. `brew install` uses them automatically, so
-the C builds, the pinned Ghidra keg, the Ghidra MCP venv and the Python wheel
-install become downloads instead of local compiles.
+the C builds, the pinned Ghidra keg, the Ghidra MCP and serena venvs and the Python
+wheel install become downloads instead of local compiles.
 
 Only the current stable macOS is bottled: the workflow pins `macos-26`, today's
 latest stable arm64 image, and Homebrew's older-macOS fallback serves that bottle
@@ -922,7 +953,7 @@ on macOS 27 as well. Older macOS releases build from source.
 The workflow is dispatched by
 [`bump-upstream.yml`](.github/workflows/bump-upstream.yml) when a bump moves one
 of them, and by pushes that touch their formulae or patches. It rebuilds all
-seven together (partclone links libntfs-3g; ghidra-mcp's extension and venv
+eight together (partclone links libntfs-3g; ghidra-mcp's extension and venv
 target the pinned ghidra@12.1 keg), tests the source builds, bottles them,
 uploads the assets, installs the published bottles on a clean runner to check
 that they pour, and only then commits the regenerated `bottle do` blocks. A

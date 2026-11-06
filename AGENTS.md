@@ -31,7 +31,7 @@ keg until they happen to run `brew reinstall` themselves.
 ## Bottled formulae must not keep a stale `bottle do` block
 
 `libntfs-3g`, `ntfsprogs`, `partclone`, `sasquatch`, `ghidra@12.1`,
-`ghidra-mcp` and `unblob` are published as bottles by
+`ghidra-mcp`, `unblob` and `serena` are published as bottles by
 [`bottles.yml`](.github/workflows/bottles.yml); that workflow owns their
 `bottle do` blocks and regenerates them from the assets it uploads. A block left
 behind when `version` or `revision` moves pins a checksum for a bottle URL that

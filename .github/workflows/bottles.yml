@@ -5,7 +5,7 @@ name: bottles
 # `bottle do` blocks. `brew install` downloads a bottle instead of compiling
 # when the formula has one for the current platform, which covers the C builds
 # (libntfs-3g, ntfsprogs, partclone, sasquatch), the pinned Ghidra keg plus
-# ghidra-mcp's Python venv, and unblob's Python/wheel install.
+# ghidra-mcp's and serena's Python venvs, and unblob's Python/wheel install.
 #
 # Only the current stable macOS is bottled: the workflow pins `macos-26`, today's
 # latest stable arm64 image, and Homebrew's older-macOS fallback serves that
@@ -17,7 +17,7 @@ name: bottles
 # hand-made repair that changes `version` or `revision` must drop it too (see
 # AGENTS.md).
 #
-# All seven formulae are rebuilt together on purpose: partclone links against
+# All eight formulae are rebuilt together on purpose: partclone links against
 # libntfs-3g, ghidra-mcp's extension and venv target the pinned ghidra@12.1 keg,
 # and rebuilding the set keeps every bottle consistent with the tap's
 # dependencies.
@@ -39,6 +39,7 @@ on:
       - "Formula/ghidra-mcp.rb"
       - "Formula/ghidra@12.1.rb"
       - "Formula/unblob.rb"
+      - "Formula/serena.rb"
       - "Patches/partclone-darwin.patch"
       - "Patches/sasquatch-darwin.patch"
 
@@ -85,12 +86,12 @@ jobs:
           # (partclone links libntfs-3g, unblob drives partclone and
           # sasquatch, ghidra-mcp targets the ghidra@12.1 keg) and test the
           # source build before packaging it.
-          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob serena; do
             brew install --build-bottle "fmu/tap/$name"
             brew test "fmu/tap/$name"
           done
 
-          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob serena; do
             # --no-rebuild keeps the bottle at rebuild 0: a change to installed
             # files already bumps `revision` (AGENTS.md), which changes the
             # package version and therefore the bottle filename.
@@ -146,14 +147,14 @@ jobs:
       - name: Audit the bottled formulae
         run: |
           set -euo pipefail
-          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob serena; do
             brew audit --strict "fmu/tap/$name"
           done
       - name: Copy the bottle blocks into the checkout
         run: |
           set -euo pipefail
           tap="$(brew --repository fmu/tap)"
-          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob serena; do
             cp "$tap/Formula/$name.rb" "Formula/$name.rb"
           done
           git diff --stat
@@ -193,7 +194,7 @@ jobs:
           # Install from the live release in dependency order and run each
           # formula's own test, so a bottle that does not pour blocks the
           # bottle-block commit instead of only failing for users.
-          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob; do
+          for name in libntfs-3g ntfsprogs sasquatch partclone ghidra@12.1 ghidra-mcp unblob serena; do
             brew install --force-bottle "fmu/tap/$name"
             brew test "fmu/tap/$name"
           done
@@ -208,7 +209,7 @@ jobs:
             exit 0
           fi
           {
-            echo "bottles: publish libntfs-3g, ntfsprogs, partclone, ghidra@12.1, ghidra-mcp, sasquatch, unblob"
+            echo "bottles: publish libntfs-3g, ntfsprogs, partclone, ghidra@12.1, ghidra-mcp, sasquatch, serena, unblob"
             echo
             git diff --cached --stat
           } > "${RUNNER_TEMP}/message"

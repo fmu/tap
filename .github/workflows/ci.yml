@@ -136,6 +136,7 @@ jobs:
                 fmu/tap/rea-full \
                 fmu/tap/partclone \
                 fmu/tap/sasquatch \
+                fmu/tap/serena \
                 fmu/tap/mesh-llm \
                 fmu/tap/skippy \
                 fmu/tap/unblob
@@ -176,6 +177,7 @@ jobs:
             brew install fmu/tap/vectorcraft-cli
             brew install fmu/tap/wordcraft-cli
             brew install fmu/tap/mesh-llm
+            brew install fmu/tap/serena
             # Pared is macOS 27 only; installing it on an older runner fails by
             # design, so only try where it can run.
             if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]; then
@@ -273,6 +275,7 @@ jobs:
             brew test fmu/tap/sasquatch
             brew test fmu/tap/skippy
             brew test fmu/tap/mesh-llm
+            brew test fmu/tap/serena
             brew test fmu/tap/unblob
             if [ "${PARED_INSTALLED:-}" = "1" ]; then
               brew test fmu/tap/pared
