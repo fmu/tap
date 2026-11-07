@@ -24,7 +24,8 @@ keg until they happen to run `brew reinstall` themselves.
 - First repair of a release: `revision 1`. Each further repair of the same
   release: increment it.
 - Remove the `revision` line (back to 0) when the next upstream version bump
-  lands; for `rea`/`rea-full`, `scripts/bump/rea.py` drops it automatically.
+  lands; the bump scripts for `rea`/`rea-full` and
+  `serena`/`serena-full`/`serena-jetbrains` drop it automatically.
 - Version-only bumps from `scripts/bump/` need no revision; they already change
   `version`.
 

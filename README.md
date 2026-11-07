@@ -25,7 +25,9 @@ brew install fmu/tap/mesh-llm      # distributed LLM mesh runtime (Apple silicon
 brew install fmu/tap/jadx-headless-mcp  # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/kuna         # latest upstream (REA uses the pinned @ keg)
 brew install fmu/tap/ghidra-mcp   # standalone Ghidra MCP server (independent of rea)
-brew install fmu/tap/serena        # semantic code retrieval/editing MCP toolkit (uvx language servers)
+brew install fmu/tap/serena        # semantic code retrieval/editing MCP toolkit (language servers on demand)
+brew install fmu/tap/serena-full   # serena with pinned OSS language servers
+brew install fmu/tap/serena-jetbrains  # serena with the paid JetBrains plugin backend
 brew install fmu/tap/gbrain fmu/tap/qwen3-embed
 brew install fmu/tap/designcraft-cli  # the headless DesignCraft engine (matches the app cask)
 brew install fmu/tap/figcraft-cli  # the headless FigCraft engine (matches the app cask)
@@ -525,18 +527,105 @@ serena setup claude     # or: codex; `serena setup --help` lists the clients
 ```
 
 The MCP launcher is `serena start-mcp-server`; a client that is configured by
-hand uses `<prefix>/bin/serena start-mcp-server --context <client>`. Language
-servers are not bundled: `uv` is a dependency, and SolidLSP launches pyright
-through `uvx` for Python on first use, while other languages need their own
-toolchain (node/npm for TypeScript, a JDK for Java, ...). Serena's state lives
-under `~/.serena` (override with `SERENA_HOME`); SolidLSP and uv cache their
-downloads under `~/.solidlsp` and uv's data directory. The optional dashboard's
+hand uses `<prefix>/bin/serena start-mcp-server --context <client>`. This is the
+plain formula: no language server is bundled, `uv` is a dependency, and SolidLSP
+fetches the language server a project needs on first activation (pyright for
+Python through `uvx`, other languages through their own toolchain — node/npm for
+TypeScript, a JDK for Java, ...). Serena's state lives under `~/.serena`
+(override with `SERENA_HOME`); SolidLSP and uv cache their downloads under
+`~/.solidlsp` and uv's data directory. The optional dashboard's
 pywebview/pystray dependencies are installed with the rest.
+
+Two variants pin their code-intelligence backends instead, and install
+launchers under the same command names, so the three formulae are alternatives
+rather than additions: [`serena-full`](#serena-full) pins the open-source
+language servers Homebrew packages (plus the ones it does not, from the npm
+registry), and [`serena-jetbrains`](#serena-jetbrains) uses the paid Serena
+JetBrains plugin.
 
 `scripts/bump/serena.py` follows the `oraios/serena` tags, rewrites the tag and
 commit revision, and regenerates the PyPI resource block from the release's
-`uv.lock`. It fails rather than pinning a release whose lock no longer supports
-the formula's `python@3.14`.
+`uv.lock`; it re-pins the variant formulae too. It fails rather than pinning a
+release whose lock no longer supports the formula's `python@3.14`.
+
+### serena-full
+
+`serena-full` is the "every packaging-pinned language server" variant,
+following the same pattern as [`rea-full`](#rea-full): it depends on `serena`
+and on the language-server formulae, installs the servers Homebrew does not
+package into its own keg, and installs `serena`/`serena-agent`/`serena-hooks`
+launchers that point SolidLSP at all of them. One `brew install` then produces a
+Serena that downloads no language server on first project activation.
+
+```bash
+brew install fmu/tap/serena-full
+serena init
+serena setup claude
+```
+
+Pinned: pyright (Python), gopls with the Go toolchain, ruby-lsp with Ruby,
+rust-analyzer, taplo (TOML), terraform-ls, vscode-html-language-server (HTML),
+typescript-language-server with TypeScript (JavaScript too),
+some-sass-language-server (SCSS/CSS), `@astrojs/language-server` and marksman
+(Markdown). The launchers export the `ls_specific_settings` paths through the
+environment, so a client registration written by `serena setup` keeps them
+without a shell profile; a setting already present in
+`~/.serena/serena_config.yml` wins over the launcher defaults.
+
+What formula dependencies cannot pin: Rust projects still need a toolchain
+(rustup) on `PATH`, Terraform still needs the `terraform` CLI (Homebrew stopped
+packaging it after the licence change; use `hashicorp/tap`), and the
+experimental HTML, Markdown and SCSS/CSS servers must be enabled per project in
+`.serena/project.yml` (e.g. `language_servers: [markdown]`). Nix is not
+pre-installed because Homebrew packages neither `nixd` nor `nix`, and GraphQL is
+not supported by Serena 2.1.0 (the documentation on `main` describes it, but no
+GraphQL adapter ships in the release). Like `rea-full`, `serena-full` is a
+launcher metapackage and is not bottled: it installs in a couple of minutes from
+the npm registry.
+
+### serena-jetbrains
+
+`serena-jetbrains` is the variant that uses the paid
+[Serena JetBrains plugin](https://plugins.jetbrains.com/plugin/28946-serena/)
+as its code-intelligence backend instead of language servers. It depends on
+`serena`, ships the pinned plugin from the JetBrains Marketplace, and installs
+`serena`/`serena-agent`/`serena-hooks` launchers that select the backend. It
+replaces the `scripts/setup-serena-jetbrains.py` helper.
+
+```bash
+brew install fmu/tap/serena-jetbrains
+serena-jetbrains              # install the pinned IDE and plugin
+serena-jetbrains --activate   # accept the JetBrains agreement, start the plugin trial
+serena init
+serena setup claude
+```
+
+`serena-jetbrains` installs the last Apache-2.0 IntelliJ IDEA Community Edition
+build (2025.2.6.4) plus the plugin into the IDE's user plugin directory and the
+IDE itself under `~/.serena/jetbrains` (override with `SERENA_HOME`); downloads
+are pinned by URL and SHA-256 in the formula, so no marketplace lookup happens
+at run time. The IDE is only ever started hidden as a background backend and is
+never used as an editor. The first project activation indexes the project and
+can take minutes.
+
+The plugin is a paid Marketplace plugin with a 7-day trial: JetBrains only
+loads it with an active licence or trial tied to your JetBrains account, which
+the formula cannot activate for you. Until it is activated, use the plain
+`serena` formula or `serena-full`.
+
+All three formulae provide `bin/serena`, `bin/serena-agent` and
+`bin/serena-hooks`, so they are alternatives, not additions: installing one
+after the other replaces those commands (Homebrew reports the overwritten
+links). The `serena` keg stays installed as the dependency, so swapping back
+while a variant is installed is:
+
+```bash
+brew unlink serena && brew link serena
+```
+
+`scripts/bump/serena.py` re-pins `serena-full` and `serena-jetbrains` from the
+same release; the IntelliJ and plugin pins are bumped by hand together with
+their checksums.
 
 ### designcraft-cli
 
@@ -876,7 +965,7 @@ everything.
 | `kuna` (latest; REA uses `kuna@<REA pin>`) | `Noelo-Lab/kuna` | `v*` |
 | `unblob` | `onekey-sec/unblob` | PyPI `unblob` release (wheels) |
 | `sasquatch` | `onekey-sec/sasquatch` | `sasquatch-v*` |
-| `serena` | `oraios/serena` | `v*` (Python resources from the tag's `uv.lock`) |
+| `serena` (+ `serena-full`, `serena-jetbrains`) | `oraios/serena` | `v*` (Python resources from the tag's `uv.lock`) |
 | `partclone` | `Thomas-Tsai/partclone` | `<version>` |
 | `ntfs-3g` (`libntfs-3g` + `ntfsprogs`) | `tuxera/ntfs-3g` | `<version>` |
 | `skippy` | `Mesh-LLM/mesh-llm` | rolling preview with a `skippy` CLI asset |

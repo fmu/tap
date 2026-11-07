@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pin Formula/serena.rb to the latest oraios/serena release.
+"""Pin Formula/serena.rb and its variant formulae to the latest release.
 
 Serena tags every release in oraios/serena, and the repository carries the
 ``uv.lock`` that upstream tests against. The formula installation itself is the
@@ -13,6 +13,11 @@ wheel for each package, and falls back to the sdist only where no compatible
 wheel exists (that one is then built by pip). Version, tag and commit revision
 come from GitHub; the dependency block is generated between marker comments in
 the formula, which are the only part of it this script owns.
+
+Formula/serena-full.rb and Formula/serena-jetbrains.rb pin the same release but
+install no PyPI resources: they only depend on serena and on the servers/tools
+they pin, so the bump moves their Git tag URL and drops a repair revision. Their
+JetBrains/IDE pins are bumped by hand together with their SHA-256.
 
 It fails instead of writing a formula when the tag cannot be resolved, when
 upstream's lock no longer supports Python 3.14, when the lock's own version
@@ -45,6 +50,11 @@ from _common import (
 REPO = "oraios/serena"
 PYPI_PROJECT = "serena-agent"
 FORMULA = "Formula/serena.rb"
+FULL_FORMULA = "Formula/serena-full.rb"
+JETBRAINS_FORMULA = "Formula/serena-jetbrains.rb"
+# The variant formulae only pin the Git tag URL (and a repair revision);
+# they install no PyPI resources of their own.
+VARIANTS = (FULL_FORMULA, JETBRAINS_FORMULA)
 LOCKFILE = "uv.lock"
 
 # The formula installs python@3.14 (and macOS arm64 wheels); serena's
@@ -73,6 +83,7 @@ _URL_BLOCK = re.compile(
 _TAG = r'(?m)^      tag:      "v([^"]+)",$'
 _BEGIN = "  # BEGIN GENERATED PYPI RESOURCES (scripts/bump/serena.py)\n"
 _END = "  # END GENERATED PYPI RESOURCES\n"
+_REVISION = re.compile(r"(?m)^[ \t]*revision [0-9]+\n")
 
 _WHEEL = re.compile(r"^(?P<name>[^-]+)-(?P<version>[^-]+)(?:-[^-]+)?-(?P<py>[^-]+)-(?P<abi>[^-]+)-(?P<plat>[^-]+)\.whl$")
 
@@ -456,12 +467,35 @@ def _replace_resources(text: str, entries: list[dict]) -> str:
     return text[:start] + _render_resources(entries) + text[end + len(_END) :]
 
 
+def _repin_url_block(text: str, formula: str, tag: str, revision: str) -> str:
+    """Point a formula's Git tag URL at the release being pinned."""
+    text, count = _URL_BLOCK.subn(
+        f'  url "https://github.com/{REPO}.git",\n'
+        f'      tag:      "{tag}",\n'
+        f'      revision: "{revision}"',
+        text,
+    )
+    if count != 1:
+        fail(f"{formula}: expected one Git tag url block, found {count}")
+    return text
+
+
+def _drop_revision(text: str, formula: str) -> str:
+    """A revision repairs the release it was added for, not the next one (AGENTS.md)."""
+    text, revisions = _REVISION.subn("", text)
+    if revisions > 1:
+        fail(f"{formula}: found {revisions} revision lines; expected at most one")
+    return text
+
+
 def main() -> None:
     tag = latest_tag(REPO)
     version = version_from_tag(tag)
     text = read(FORMULA)
     pinned = pinned_version(text, _TAG, FORMULA)
-    if pinned == version:
+    variants = {formula: read(formula) for formula in VARIANTS}
+    variant_pins = {formula: pinned_version(variant_text, _TAG, formula) for formula, variant_text in variants.items()}
+    if pinned == version and all(variant_pin == version for variant_pin in variant_pins.values()):
         report("serena", pinned, version)
         return
 
@@ -483,18 +517,20 @@ def main() -> None:
 
     entries = _resource_entries(lock, version)
 
-    text, count = _URL_BLOCK.subn(
-        f'  url "https://github.com/{REPO}.git",\n'
-        f'      tag:      "{tag}",\n'
-        f'      revision: "{revision}"',
-        text,
-    )
-    if count != 1:
-        fail(f"{FORMULA}: expected one Git tag url block, found {count}")
+    text = _repin_url_block(text, FORMULA, tag, revision)
     text = drop_bottle_block(text, FORMULA)
     text = _replace_resources(text, entries)
+    text = _drop_revision(text, FORMULA)
 
     write(FORMULA, text)
+
+    # The variants pin the same release and install no PyPI resources, so only
+    # their Git tag URL and a possible repair revision move.
+    for formula, variant_text in variants.items():
+        variant_text = _repin_url_block(variant_text, formula, tag, revision)
+        variant_text = _drop_revision(variant_text, formula)
+        write(formula, variant_text)
+
     report("serena", pinned, version)
 
 

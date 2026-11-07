@@ -137,6 +137,8 @@ jobs:
                 fmu/tap/partclone \
                 fmu/tap/sasquatch \
                 fmu/tap/serena \
+                fmu/tap/serena-full \
+                fmu/tap/serena-jetbrains \
                 fmu/tap/mesh-llm \
                 fmu/tap/skippy \
                 fmu/tap/unblob
@@ -218,6 +220,17 @@ jobs:
           brew install fmu/tap/jadx-headless-mcp@0.7.1
           brew install fmu/tap/ghidra-mcp
           brew install fmu/tap/rea-full
+      - name: Install the serena variants
+        if: steps.scope.outputs.full == 'true'
+        # serena, serena-full and serena-jetbrains are alternatives that own
+        # `bin/serena`, `bin/serena-agent` and `bin/serena-hooks`; every formula
+        # declares link_overwrite for them, so a fresh install takes the commands
+        # over from the previously installed alternative. serena-full is the thin
+        # metapackage whose language servers come from Homebrew and the npm
+        # registry; serena-jetbrains only ships the plugin and its setup command.
+        run: |
+          brew install fmu/tap/serena-full
+          brew install fmu/tap/serena-jetbrains
       - name: Install casks
         env:
           FULL: ${{ steps.scope.outputs.full }}
@@ -276,6 +289,8 @@ jobs:
             brew test fmu/tap/skippy
             brew test fmu/tap/mesh-llm
             brew test fmu/tap/serena
+            brew test fmu/tap/serena-full
+            brew test fmu/tap/serena-jetbrains
             brew test fmu/tap/unblob
             if [ "${PARED_INSTALLED:-}" = "1" ]; then
               brew test fmu/tap/pared
