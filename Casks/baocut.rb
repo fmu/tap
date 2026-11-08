@@ -20,8 +20,8 @@
 # The DMG holds only BaoCut.app and an /Applications symlink: no pkg, daemon,
 # login item or privileged helper.
 cask "baocut" do
-  version "3.16.3-build.91"
-  sha256 "fca52dc4bf3f250c6c271e88286669eb7b4adb31ebfefd960cdc24e0c53a19f3"
+  version "3.16.4-build.92"
+  sha256 "7520f279e3112a2b7807b88b3c76918d8e19ef9fb86e32e4dfbb6067b64d250e"
 
   url "https://github.com/jimliu/baocut/releases/download/baocut-v#{version}/BaoCut-#{version}-aarch64-apple-darwin.dmg"
   name "BaoCut"
