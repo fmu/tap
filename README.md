@@ -34,6 +34,7 @@ brew install fmu/tap/figcraft-cli  # the headless FigCraft engine (matches the a
 brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stream as the app cask)
 brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
+brew install fmu/tap/shurectl      # terminal UI for Shure USB mics and audio interfaces
 brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
 brew install --cask fmu/tap/multica-desktop  # links the bundled multica CLI; CLI-only: multica-ai/tap/multica
 ```
@@ -775,6 +776,37 @@ extra fonts from
 non-Latin text is set in its intended faces instead of falling back to system
 fonts. Upstream ships no Linux CLI binary, so the formula is macOS-only.
 
+### shurectl
+
+[shurectl](https://github.com/Humblemonk/shurectl) is a terminal UI for Shure
+USB microphones and audio interfaces (MVX2U, MV6, MV7 and MV7+): gain, mute,
+Auto Level / Manual mode, monitor mix, EQ, compressor, limiter, high-pass
+filter, denoiser, reverb and LED settings, a live level meter, a gain check and
+four preset slots, all on the device itself. Upstream's own tap
+(`humblemonk/shurectl`) builds the tool from source with Rust; this formula
+installs the universal macOS binary attached to the same release instead, so
+`brew install` and `brew upgrade` are downloads rather than a Rust build, and no
+toolchain is needed:
+
+```bash
+brew install fmu/tap/shurectl
+shurectl                        # open the TUI (waits for a device if none is plugged in)
+shurectl --list                 # list connected Shure devices
+shurectl --demo mv7plus         # try the UI without a device
+shurectl --mute status          # "on" or "off", for a status bar
+shurectl --preset 2             # load preset slot 2
+shurectl --gain 24 --json       # change one setting, then print the state as JSON
+```
+
+Update the device firmware with Shure's MOTIV mobile app before the first use.
+Presets are plain TOML files under
+`~/Library/Application Support/shurectl/presets/`. The release binary is only
+ad-hoc (linker) signed, so the raw release archive trips Gatekeeper; files
+installed by Homebrew are not quarantined, so this keg runs directly. Upstream
+also publishes Linux and Windows archives from the same tag, but the formula
+installs the universal macOS asset, the one this tap's CI can validate, so it is
+macOS-only. `scripts/bump/shurectl.py` re-pins it from the latest release.
+
 ### pared
 
 The CLI half of [Pared](https://github.com/4evy/pared); the app is the
@@ -977,6 +1009,7 @@ everything.
 | `solidcraft-cli` | `tangency-labs/solidcraft` | `v*` (the release stream the `solidcraft` cask tracks) |
 | `vectorcraft-cli` | `storytold/vectorcraft` | `v*` (the tag the `vectorcraft` cask is on) |
 | `wordcraft-cli` | `storytold/wordcraft` | `v*` (the tag the `wordcraft` cask is on) |
+| `shurectl` | `Humblemonk/shurectl` | `v*` (the release's universal macOS archive) |
 | `baocut` | `JimLiu/baocut` | `baocut-v*` |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
