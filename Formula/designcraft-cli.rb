@@ -18,8 +18,8 @@
 class DesigncraftCli < Formula
   desc "Headless DesignCraft engine to lay out, edit and export documents"
   homepage "https://getartcraft.com/apps/designcraft"
-  url "https://github.com/storytold/designcraft/releases/download/v0.18.0/designcraft-cli-0.18.0-macos-universal.zip"
-  sha256 "21680591f9c263001f41d86d21d76ddf2e644141e67bd9b5c4f0444187be36e2"
+  url "https://github.com/storytold/designcraft/releases/download/v0.19.0/designcraft-cli-0.19.0-macos-universal.zip"
+  sha256 "30245ba54b026437dc5563a3ad483c1217b7ccbe19871dc7261187311d3b7b74"
   license any_of: ["MIT", "Apache-2.0"]
 
   livecheck do
