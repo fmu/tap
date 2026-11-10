@@ -36,6 +36,7 @@ brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
 brew install fmu/tap/shurectl      # terminal UI for Shure USB mics and audio interfaces
 brew install fmu/tap/safari-ext-sponsorblock  # SponsorBlock for Safari, built with Xcode
+brew install fmu/tap/safari-ext-dearrow  # DeArrow for Safari, built with Xcode
 brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
 brew install --cask fmu/tap/multica-desktop  # links the bundled multica CLI; CLI-only: multica-ai/tap/multica
 ```
@@ -883,6 +884,65 @@ latest release: the version comes from the release tag and the checksum from the
 pinning bytes nobody can fetch. The wrapper project is pinned by commit and
 moves by hand when upstream regenerates it for a new Xcode.
 
+### safari-ext-dearrow
+
+[DeArrow](https://github.com/ajayyy/DeArrow) crowdsources descriptive titles and
+thumbnails for YouTube videos. Like SponsorBlock, its Safari channel is either
+the paid App Store app or a build-it-yourself free route; this formula builds the
+free route from the pinned release asset, with the same wrapper-project approach
+as `safari-ext-sponsorblock` above:
+
+```bash
+brew install fmu/tap/safari-ext-dearrow
+```
+
+It uses upstream's generated Xcode project for the App Store app
+([ajayyy/DeArrowSafari](https://github.com/ajayyy/DeArrowSafari), pinned by
+commit), puts the release's web extension files in the `DeArrow/dist` directory
+that project references, and builds the macOS app with `xcodebuild` and an
+ad-hoc signature. Xcode is required and the package is never bottled; upstream's
+release workflow already runs webpack, so no npm build happens here.
+
+The app is ad-hoc signed, which Safari treats as unsigned. Register the app
+extension with PlugInKit, then let Safari load it:
+
+```bash
+appex="$(brew --prefix safari-ext-dearrow)/DeArrow.app/Contents/PlugIns/DeArrow Extension.appex"
+pluginkit -a "$appex"
+pluginkit -mAvvv -p com.apple.Safari.web-extension   # Safari's documented check
+```
+
+Then in Safari:
+
+1. Settings > Advanced: turn on "Show features for web developers".
+2. Settings > Developer: turn on "Allow unsigned extensions" and authenticate
+   with Touch ID or the account password.
+3. Settings > Extensions: enable "DeArrow for YouTube" and allow it on
+   youtube.com.
+
+There is no supported shell switch for step 2 on purpose — it is the same
+per-session authorisation described in the `safari-ext-sponsorblock` section, so
+`defaults`, `safaridriver` and `xcrun` cannot set it, and it must be ticked again
+after every Safari restart. That section also has the `defaults write
+com.apple.Safari.SandboxBroker ShowDevelopMenu -bool true` line for revealing
+the Developer tab from a shell, the free-Apple-certificate alternative and the
+paid App Store app. After `brew upgrade`, register the new keg's app extension
+again with the `pluginkit -a` command above. To remove it cleanly, unregister
+before uninstalling:
+
+```bash
+pluginkit -r "$appex"
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister \
+  -u "$(brew --prefix safari-ext-dearrow)/DeArrow.app"
+brew uninstall safari-ext-dearrow
+```
+
+`scripts/bump/safari-ext-dearrow.py` re-pins the formula from upstream's latest
+release: the version comes from the release tag and the checksum from the
+`SafariExtension.zip` asset, so a release without that artifact fails instead of
+pinning bytes nobody can fetch. The wrapper project is pinned by commit and
+moves by hand when upstream regenerates it for a new Xcode.
+
 ### pared
 
 The CLI half of [Pared](https://github.com/4evy/pared); the app is the
@@ -1087,6 +1147,7 @@ everything.
 | `wordcraft-cli` | `storytold/wordcraft` | `v*` (the tag the `wordcraft` cask is on) |
 | `shurectl` | `Humblemonk/shurectl` | `v*` (the release's universal macOS archive) |
 | `safari-ext-sponsorblock` | `ajayyy/SponsorBlock` | `<version>` (the release's `SafariExtension.zip`) |
+| `safari-ext-dearrow` | `ajayyy/DeArrow` | `<version>` (the release's `SafariExtension.zip`) |
 | `baocut` | `JimLiu/baocut` | `baocut-v*` |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
