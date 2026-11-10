@@ -35,8 +35,8 @@ brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stre
 brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
 brew install fmu/tap/shurectl      # terminal UI for Shure USB mics and audio interfaces
-brew install fmu/tap/safari-ext-sponsorblock  # SponsorBlock for Safari, built with Xcode
-brew install fmu/tap/safari-ext-dearrow  # DeArrow for Safari, built with Xcode
+brew install fmu/tap/safari-ext-sponsorblock  # SponsorBlock for Safari, built from the release asset
+brew install fmu/tap/safari-ext-dearrow  # DeArrow for Safari, built from the release asset
 brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
 brew install --cask fmu/tap/multica-desktop  # links the bundled multica CLI; CLI-only: multica-ai/tap/multica
 ```
@@ -816,30 +816,34 @@ YouTube videos. Its Safari channel is not a free download: the App Store copy is
 paid, and the free route is a build-it-yourself recipe — take
 `SafariExtension.zip` from a release, wrap it in a macOS app, build that app,
 then allow the unsigned build in Safari. This formula does the wrapping and the
-build from the pinned release asset, so one command produces the same app
-without opening Xcode:
+build from the pinned release asset with the Command Line Tools that Homebrew
+already needs, so one command produces the app without Xcode:
 
 ```bash
 brew install fmu/tap/safari-ext-sponsorblock
 ```
 
-It places the release's web extension files where upstream's generated Xcode
-project for the App Store app expects them
+It assembles the app bundle itself: the release's web extension files become
+the app extension's resources, upstream's generated Xcode project for the App
+Store app
 ([ajayyy/SponsorBlockSafari](https://github.com/ajayyy/SponsorBlockSafari),
-pinned by commit; it is static glue around the webpack build) and builds the
-macOS app with `xcodebuild`. The generated project is used instead of running
-Xcode's `safari-web-extension-packager` because the packager cannot read the
-extension from inside Homebrew's build sandbox. The build needs a full Xcode
-installation, and the package is never bottled; upstream's release workflow
-already runs webpack before zipping the extension, so no npm build happens here.
+pinned by commit; it is static glue around the webpack build) supplies the host
+app's status page and icon, and the two small executables are compiled with
+`xcrun clang` and ad-hoc signed. Neither Xcode nor `safari-web-extension-packager`
+is involved, and no npm build happens here because upstream's release workflow
+already runs webpack before zipping the extension. The formula is not bottled.
 
-The app is ad-hoc signed, which Safari treats as unsigned. Register the app
-extension with PlugInKit, then let Safari load it:
+The app is ad-hoc signed, which Safari treats as unsigned. Open the installed
+app once: it registers the app extension with PlugInKit and shows whether Safari
+has it enabled. If Safari's Extensions settings still do not list it, register
+the extension explicitly and re-run Safari's documented check:
 
 ```bash
-appex="$(brew --prefix safari-ext-sponsorblock)/SponsorBlock.app/Contents/PlugIns/SponsorBlock Extension.appex"
+app="$(brew --prefix safari-ext-sponsorblock)/SponsorBlock.app"
+appex="$app/Contents/PlugIns/SponsorBlock Extension.appex"
+open "$app"
 pluginkit -a "$appex"
-pluginkit -mAvvv -p com.apple.Safari.web-extension   # Safari's documented check
+pluginkit -mAvvv -p com.apple.Safari.web-extension
 ```
 
 Then in Safari:
@@ -867,9 +871,9 @@ defaults write com.apple.Safari.SandboxBroker ShowDevelopMenu -bool true
 Signing the app with a free Apple Development certificate (Xcode > Settings >
 Accounts > Manage Certificates) is the only way to avoid the per-launch toggle;
 the App Store app "SponsorBlock for YouTube" is the paid alternative that needs
-neither. After `brew upgrade`, register the new keg's app extension again with
-the `pluginkit -a` command above. To remove it cleanly, unregister before
-uninstalling (the formula has no uninstall hook):
+neither. After `brew upgrade`, open the new keg's app once more (the `app`
+variable above follows the `opt` prefix) so Safari sees the new build. To remove
+it cleanly, unregister before uninstalling (the formula has no uninstall hook):
 
 ```bash
 pluginkit -r "$appex"
@@ -896,20 +900,27 @@ as `safari-ext-sponsorblock` above:
 brew install fmu/tap/safari-ext-dearrow
 ```
 
-It uses upstream's generated Xcode project for the App Store app
+It assembles the app bundle itself, the same way as
+`safari-ext-sponsorblock`: the release's web extension files become the app
+extension's resources, upstream's generated Xcode project for the App Store app
 ([ajayyy/DeArrowSafari](https://github.com/ajayyy/DeArrowSafari), pinned by
-commit), puts the release's web extension files in the `DeArrow/dist` directory
-that project references, and builds the macOS app with `xcodebuild` and an
-ad-hoc signature. Xcode is required and the package is never bottled; upstream's
-release workflow already runs webpack, so no npm build happens here.
+commit) supplies the host app's status page and icon, and the two small
+executables are compiled with `xcrun clang` and ad-hoc signed. Neither Xcode nor
+`safari-web-extension-packager` is involved, and no npm build happens here
+because upstream's release workflow already runs webpack before zipping the
+extension. The formula is not bottled.
 
-The app is ad-hoc signed, which Safari treats as unsigned. Register the app
-extension with PlugInKit, then let Safari load it:
+The app is ad-hoc signed, which Safari treats as unsigned. Open the installed
+app once: it registers the app extension with PlugInKit and shows whether Safari
+has it enabled. If Safari's Extensions settings still do not list it, register
+the extension explicitly and re-run Safari's documented check:
 
 ```bash
-appex="$(brew --prefix safari-ext-dearrow)/DeArrow.app/Contents/PlugIns/DeArrow Extension.appex"
+app="$(brew --prefix safari-ext-dearrow)/DeArrow.app"
+appex="$app/Contents/PlugIns/DeArrow Extension.appex"
+open "$app"
 pluginkit -a "$appex"
-pluginkit -mAvvv -p com.apple.Safari.web-extension   # Safari's documented check
+pluginkit -mAvvv -p com.apple.Safari.web-extension
 ```
 
 Then in Safari:
@@ -926,8 +937,8 @@ per-session authorisation described in the `safari-ext-sponsorblock` section, so
 after every Safari restart. That section also has the `defaults write
 com.apple.Safari.SandboxBroker ShowDevelopMenu -bool true` line for revealing
 the Developer tab from a shell, the free-Apple-certificate alternative and the
-paid App Store app. After `brew upgrade`, register the new keg's app extension
-again with the `pluginkit -a` command above. To remove it cleanly, unregister
+paid App Store app. After `brew upgrade`, open the new keg's app once more (the
+`app` variable above follows the `opt` prefix). To remove it cleanly, unregister
 before uninstalling:
 
 ```bash

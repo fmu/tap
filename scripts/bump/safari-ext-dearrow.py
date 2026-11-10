@@ -54,6 +54,8 @@ def main() -> None:
     if count != 1:
         fail(f"{FORMULA}: expected one SafariExtension.zip URL, found {count}")
     text = replace_sha_after_url(text, ASSET, sha256, FORMULA)
+    # A revision repairs the release it was added for, not the next one.
+    text = re.sub(r"(?m)^[ \t]*revision \d+\n", "", text)
 
     write(FORMULA, text)
     report("safari-ext-dearrow", pinned, version)
