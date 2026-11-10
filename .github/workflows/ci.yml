@@ -126,6 +126,7 @@ jobs:
                 fmu/tap/vectorcraft-cli \
                 fmu/tap/wordcraft-cli \
                 fmu/tap/shurectl \
+                fmu/tap/safari-ext-sponsorblock \
                 fmu/tap/pared \
                 fmu/tap/ghidra@12.1 \
                 fmu/tap/jadx-headless-mcp \
@@ -180,6 +181,7 @@ jobs:
             brew install fmu/tap/vectorcraft-cli
             brew install fmu/tap/wordcraft-cli
             brew install fmu/tap/shurectl
+            brew install fmu/tap/safari-ext-sponsorblock
             brew install fmu/tap/mesh-llm
             brew install fmu/tap/serena
             # Pared is macOS 27 only; installing it on an older runner fails by
@@ -280,6 +282,7 @@ jobs:
             brew test fmu/tap/vectorcraft-cli
             brew test fmu/tap/wordcraft-cli
             brew test fmu/tap/shurectl
+            brew test fmu/tap/safari-ext-sponsorblock
             brew test fmu/tap/kuna
             brew test fmu/tap/kuna@1.833
             brew test fmu/tap/jadx-headless-mcp

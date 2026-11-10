@@ -35,6 +35,7 @@ brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stre
 brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
 brew install fmu/tap/shurectl      # terminal UI for Shure USB mics and audio interfaces
+brew install fmu/tap/safari-ext-sponsorblock  # SponsorBlock for Safari, built with Xcode
 brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
 brew install --cask fmu/tap/multica-desktop  # links the bundled multica CLI; CLI-only: multica-ai/tap/multica
 ```
@@ -807,6 +808,81 @@ also publishes Linux and Windows archives from the same tag, but the formula
 installs the universal macOS asset, the one this tap's CI can validate, so it is
 macOS-only. `scripts/bump/shurectl.py` re-pins it from the latest release.
 
+### safari-ext-sponsorblock
+
+[SponsorBlock](https://github.com/ajayyy/SponsorBlock) skips sponsor segments in
+YouTube videos. Its Safari channel is not a free download: the App Store copy is
+paid, and the free route is a build-it-yourself recipe — take
+`SafariExtension.zip` from a release, wrap it in a macOS app, build that app,
+then allow the unsigned build in Safari. This formula does the wrapping and the
+build from the pinned release asset, so one command produces the same app
+without opening Xcode:
+
+```bash
+brew install fmu/tap/safari-ext-sponsorblock
+```
+
+It places the release's web extension files where upstream's generated Xcode
+project for the App Store app expects them
+([ajayyy/SponsorBlockSafari](https://github.com/ajayyy/SponsorBlockSafari),
+pinned by commit; it is static glue around the webpack build) and builds the
+macOS app with `xcodebuild`. The generated project is used instead of running
+Xcode's `safari-web-extension-packager` because the packager cannot read the
+extension from inside Homebrew's build sandbox. The build needs a full Xcode
+installation, and the package is never bottled; upstream's release workflow
+already runs webpack before zipping the extension, so no npm build happens here.
+
+The app is ad-hoc signed, which Safari treats as unsigned. Register the app
+extension with PlugInKit, then let Safari load it:
+
+```bash
+appex="$(brew --prefix safari-ext-sponsorblock)/SponsorBlock.app/Contents/PlugIns/SponsorBlock Extension.appex"
+pluginkit -a "$appex"
+pluginkit -mAvvv -p com.apple.Safari.web-extension   # Safari's documented check
+```
+
+Then in Safari:
+
+1. Settings > Advanced: turn on "Show features for web developers".
+2. Settings > Developer: turn on "Allow unsigned extensions" and authenticate
+   with Touch ID or the account password.
+3. Settings > Extensions: enable "SponsorBlock for YouTube" and allow it on
+   youtube.com.
+
+Safari clears "Allow unsigned extensions" when it quits, so step 2 must be
+repeated after every Safari restart; step 1 is persistent. There is no supported
+shell switch for step 2 on purpose: the permission is a per-session
+authorisation behind a Touch ID/password prompt, not a preference, so `defaults`,
+`safaridriver` and `xcrun` cannot set it. The Advanced switch that reveals the
+Developer tab is a Safari preference; on macOS 27 the setting Safari keeps in
+`com.apple.Safari.SandboxBroker` as `ShowDevelopMenu` can be written from a
+shell before Safari launches (if the tab still does not appear, use the
+checkbox):
+
+```bash
+defaults write com.apple.Safari.SandboxBroker ShowDevelopMenu -bool true
+```
+
+Signing the app with a free Apple Development certificate (Xcode > Settings >
+Accounts > Manage Certificates) is the only way to avoid the per-launch toggle;
+the App Store app "SponsorBlock for YouTube" is the paid alternative that needs
+neither. After `brew upgrade`, register the new keg's app extension again with
+the `pluginkit -a` command above. To remove it cleanly, unregister before
+uninstalling (the formula has no uninstall hook):
+
+```bash
+pluginkit -r "$appex"
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister \
+  -u "$(brew --prefix safari-ext-sponsorblock)/SponsorBlock.app"
+brew uninstall safari-ext-sponsorblock
+```
+
+`scripts/bump/safari-ext-sponsorblock.py` re-pins the formula from upstream's
+latest release: the version comes from the release tag and the checksum from the
+`SafariExtension.zip` asset, so a release without that artifact fails instead of
+pinning bytes nobody can fetch. The wrapper project is pinned by commit and
+moves by hand when upstream regenerates it for a new Xcode.
+
 ### pared
 
 The CLI half of [Pared](https://github.com/4evy/pared); the app is the
@@ -1010,6 +1086,7 @@ everything.
 | `vectorcraft-cli` | `storytold/vectorcraft` | `v*` (the tag the `vectorcraft` cask is on) |
 | `wordcraft-cli` | `storytold/wordcraft` | `v*` (the tag the `wordcraft` cask is on) |
 | `shurectl` | `Humblemonk/shurectl` | `v*` (the release's universal macOS archive) |
+| `safari-ext-sponsorblock` | `ajayyy/SponsorBlock` | `<version>` (the release's `SafariExtension.zip`) |
 | `baocut` | `JimLiu/baocut` | `baocut-v*` |
 | `iqualize` | `dariuscorvus/iqualize` | `v*` |
 | `mornye` | `mornyeapp/Mornye-Desktop` | `v*` |
