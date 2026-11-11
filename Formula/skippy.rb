@@ -10,9 +10,9 @@
 class Skippy < Formula
   desc "Standalone model-serving CLI with OpenAI-compatible APIs"
   homepage "https://github.com/Mesh-LLM/mesh-llm"
-  url "https://github.com/Mesh-LLM/mesh-llm/releases/download/v0.78.0-preview.40959817943.1/skippy-v0.78.0-preview.40959817943.1-darwin-aarch64-cli.tar.gz"
-  version "0.78.0-preview.40959817943.1"
-  sha256 "ab7cd8ae1f6e52335ef21dda53f9925e2a4185e2fdfa02b30e1e5a5440518129"
+  url "https://github.com/Mesh-LLM/mesh-llm/releases/download/v0.79.0/skippy-v0.79.0-darwin-aarch64-cli.tar.gz"
+  version "0.79.0"
+  sha256 "3afedf78ba1fdab8d56541c82301e11656e8a08b210dd7a3987232f225c2f5ce"
   license any_of: ["MIT", "Apache-2.0"]
 
   depends_on arch: :arm64
