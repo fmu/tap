@@ -19,8 +19,8 @@
 class WordcraftCli < Formula
   desc "Headless WordCraft engine to write, edit and export documents"
   homepage "https://getartcraft.com/apps/wordcraft"
-  url "https://github.com/storytold/wordcraft/releases/download/v0.18.0/wordcraft-cli-0.18.0-macos-universal.zip"
-  sha256 "7df280ca934307fd80d389e2075bf00a042e09880f7200937b1829c8c5f30f19"
+  url "https://github.com/storytold/wordcraft/releases/download/v0.18.1/wordcraft-cli-0.18.1-macos-universal.zip"
+  sha256 "34397cf6fcf73ee8ae8d53cab08fbdfc213262dbb6753c2965ebb7cde37b8616"
   license any_of: ["MIT", "Apache-2.0"]
 
   livecheck do
