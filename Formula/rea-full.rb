@@ -14,11 +14,21 @@
 #   unblob      unblob       REA_UNBLOB_COMMAND (firmware extraction)
 #   WABT        wabt 1.0.42  REA_WABT_BIN_DIRECTORY (absolute directory)
 #   sigrok      sigrok-cli   REA_SIGROK_COMMAND
+#   adb         android-platform-tools cask
+#                            REA_ADB_PATH (Android Device Bridge)
 #
 # The launcher also points REA at the pinned engines of the rea keg it depends
 # on (`ghidra@12.1`, `kuna@1.833`, `jadx-headless-mcp@0.7.1`) and at the
 # openjdk@21 they are verified with. `brew info rea` documents the same
 # settings for the unconfigured CLI.
+#
+# adb is the one setting that comes from a cask: a formula cannot depend on one
+# (Homebrew rejects `depends_on cask:` with "Unsupported special dependency"),
+# so the launcher applies REA_ADB_PATH only while the cask's linked `adb` is
+# present. REA prefers an absolute REA_ADB_PATH over PATH, so a baked path would
+# otherwise outlive an uninstalled cask and hide an adb the user installed
+# elsewhere; guarding it also means installing the cask later needs no
+# reinstall of this keg.
 #
 # The launcher also discards a nix-store `DEVELOPER_DIR`/`SDKROOT` redirect.
 # A nix or direnv shell exports those from nixpkgs' apple-sdk, which carries no
@@ -43,9 +53,9 @@
 # keg-only and prefixes its tools (`gobjdump`), so REA's `objdump` provider
 # would never see it.
 #
-# The rest cannot be formula dependencies: Hopper, Cutter and mitmproxy are
-# casks, and IDA and JEB are not packaged in Homebrew at all. The caveats list
-# the cask commands and the settings for the rest.
+# The rest cannot be formula dependencies: Hopper, Cutter, mitmproxy and
+# android-platform-tools are casks, and IDA and JEB are not packaged in Homebrew
+# at all. The caveats list the cask commands and the settings for the rest.
 #
 # The source below is Formula/rea.rb's own tarball, used for its version,
 # documentation and package manifest; `scripts/bump/rea.py` re-pins both
@@ -61,7 +71,10 @@ class ReaFull < Formula
   # DEVELOPER_DIR/SDKROOT, because a 6.8.0_1 launcher fails `rea doctor` with
   # "error: tool 'swiftc' not found" inside a nix shell. Without the bump,
   # `brew upgrade` reports those kegs as current (AGENTS.md).
-  revision 2
+  # Revision 3 adds the guarded REA_ADB_PATH default, which changes what the
+  # keg installs (a launcher that sets one more setting) without changing the
+  # packaged release.
+  revision 3
 
   depends_on "apktool"
   depends_on "binwalk"
@@ -110,6 +123,19 @@ class ReaFull < Formula
       %Q(  ["#{name}", "#{value}"],)
     end.join("\n")
 
+    # Settings that point at a cask. A formula cannot depend on a cask, so they
+    # are not part of `settings`: the launcher applies one at launch only while
+    # its target is installed. REA prefers REA_ADB_PATH over PATH, so an
+    # unconditional default would outlive an uninstalled cask and hide the adb a
+    # user installed elsewhere.
+    cask_settings = {
+      "REA_ADB_PATH" => HOMEBREW_PREFIX/"bin/adb",
+    }
+
+    cask_defaults = cask_settings.map do |name, value|
+      %Q(  ["#{name}", "#{value}"],)
+    end.join("\n")
+
     # A Node launcher rather than a shell wrapper: `rea setup` records the path
     # REA was invoked through in the agent registrations it writes, so a shell
     # wrapper would register the inner CLI and the configured clients would
@@ -146,8 +172,19 @@ class ReaFull < Formula
       for (const [name, value] of defaults) {
         if (process.env[name] === undefined) process.env[name] = value;
       }
+      // Settings whose tool comes from a cask, which a formula cannot depend
+      // on. Apply one only while its target exists, so a cask removed after
+      // this keg was built cannot shadow a tool the user installed elsewhere.
+      const caskDefaults = [
+      __REA_CASK_DEFAULTS__
+      ];
       Promise.all([import("node:fs"), import("node:url")])
         .then(([fs, url]) => {
+          for (const [name, value] of caskDefaults) {
+            if (process.env[name] === undefined && fs.existsSync(value)) {
+              process.env[name] = value;
+            }
+          }
           // Resolve the rea keg at launch, so `brew upgrade rea` is picked up.
           const cli = fs.realpathSync("#{formula_opt_libexec("rea")}/bin/rea");
           return import(url.pathToFileURL(cli).href);
@@ -160,6 +197,7 @@ class ReaFull < Formula
     # The defaults are indented for the generated file; insert them after the
     # heredoc dedented so they keep that indentation.
     launcher = launcher.sub("__REA_DEFAULTS__", defaults)
+    launcher = launcher.sub("__REA_CASK_DEFAULTS__", cask_defaults)
 
     # The npm package exposes `rea` and the legacy `rea-agents`; the launcher
     # claims both names so neither can run the unconfigured CLI.
@@ -191,9 +229,16 @@ class ReaFull < Formula
 
       The remaining integrations are casks, which formulae cannot depend on:
 
-        brew install --cask hopper-disassembler   # Hopper provider
-        brew install --cask cutter                # Cutter, rizin's GUI
-        brew install --cask mitmproxy             # mitmdump
+        brew install --cask hopper-disassembler     # Hopper provider
+        brew install --cask cutter                  # Cutter, rizin's GUI
+        brew install --cask mitmproxy               # mitmdump
+        brew install --cask android-platform-tools  # adb, Android devices
+
+      adb is the one cask tool the launcher configures: while the
+      android-platform-tools cask installs adb into #{HOMEBREW_PREFIX}/bin,
+      REA_ADB_PATH points at it, so installing the cask later completes the
+      Android device support without reinstalling this keg. Without the cask
+      the setting is left unset and REA keeps looking for adb on PATH.
 
       IDA and JEB are not in Homebrew. `rea doctor --json` inspects the engines
       and agent registrations only; the optional integrations are wired by the
@@ -214,10 +259,19 @@ class ReaFull < Formula
       GHIDRA_INSTALL_DIR REA_KUNA_COMMAND REA_JADX_MCP_JAR
       REA_APKTOOL_COMMAND REA_BINWALK_COMMAND REA_CAPINFOS_COMMAND
       REA_GDB_COMMAND REA_RIZIN_COMMAND REA_SIGROK_COMMAND
-      REA_TSHARK_COMMAND REA_UNBLOB_COMMAND REA_WABT_BIN_DIRECTORY JAVA_HOME
+      REA_TSHARK_COMMAND REA_UNBLOB_COMMAND REA_WABT_BIN_DIRECTORY
+      REA_ADB_PATH JAVA_HOME
     ].each do |setting|
       assert_includes launcher, setting
     end
+
+    # adb comes from the android-platform-tools cask, which a formula cannot
+    # depend on, so the launcher may only set it while the cask's binary is
+    # there: REA prefers an absolute REA_ADB_PATH over PATH, and a stale one
+    # would hide an adb installed elsewhere. `brew test` cannot install the
+    # cask, so assert the guard rather than the resolved value.
+    assert_includes launcher, "#{HOMEBREW_PREFIX}/bin/adb"
+    assert_includes launcher, "fs.existsSync(value)"
 
     # A nix/direnv shell redirects xcrun to an apple-sdk that has no Swift
     # compiler, so REA's provider checks die with "error: tool 'swiftc' not
