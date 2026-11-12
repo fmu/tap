@@ -144,7 +144,8 @@ jobs:
                 fmu/tap/serena-jetbrains \
                 fmu/tap/mesh-llm \
                 fmu/tap/skippy \
-                fmu/tap/unblob
+                fmu/tap/unblob \
+                fmu/tap/zed-remote-server
           else
             for formula in $FORMULAE; do
               brew audit --strict "fmu/tap/${formula}"
@@ -185,6 +186,7 @@ jobs:
             brew install fmu/tap/safari-ext-sponsorblock
             brew install fmu/tap/safari-ext-dearrow
             brew install fmu/tap/mesh-llm
+            brew install fmu/tap/zed-remote-server
             brew install fmu/tap/serena
             # Pared is macOS 27 only; installing it on an older runner fails by
             # design, so only try where it can run.
@@ -301,6 +303,7 @@ jobs:
             brew test fmu/tap/serena-full
             brew test fmu/tap/serena-jetbrains
             brew test fmu/tap/unblob
+            brew test fmu/tap/zed-remote-server
             if [ "${PARED_INSTALLED:-}" = "1" ]; then
               brew test fmu/tap/pared
             fi

@@ -35,6 +35,7 @@ brew install fmu/tap/solidcraft-cli  # the headless SolidCraft engine (same stre
 brew install fmu/tap/vectorcraft-cli  # the headless VectorCraft engine (matches the app cask)
 brew install fmu/tap/wordcraft-cli  # the headless WordCraft engine (matches the app cask)
 brew install fmu/tap/shurectl      # terminal UI for Shure USB mics and audio interfaces
+brew install fmu/tap/zed-remote-server  # the server Zed runs on a remote development host
 brew install fmu/tap/safari-ext-sponsorblock  # SponsorBlock for Safari, built from the release asset
 brew install fmu/tap/safari-ext-dearrow  # DeArrow for Safari, built from the release asset
 brew install --cask fmu/tap/baocut fmu/tap/iqualize fmu/tap/mornye fmu/tap/mpv-app
@@ -86,7 +87,7 @@ brew install --cask hopper-disassembler
 ```
 
 Rizin is the other optional integration this tap can supply
-(`brew install rizin`, then `REA_RIZIN_COMMAND`); gdb, objdump, apktool,
+(`brew install rizin`, then `REA_RIZIN_COMMAND`); gdb, objdump, apktool, adb,
 binwalk, tshark, WABT, sigrok, mitmdump, IDA, JEB and Cutter are detected from
 `PATH` or their own `REA_*` setting and are not dependencies of this formula.
 `brew install fmu/tap/rea-full` is the alternative that adds the ones Homebrew
@@ -171,12 +172,22 @@ fmu/tap/rea` brings it (and the engines) back instead.
 `objdump` needs no dependency: the Command Line Tools' `/usr/bin/objdump` is
 what REA looks for by default, and GNU binutils would not do because it is
 keg-only and prefixes its tools (`gobjdump`). The remaining providers cannot be
-formula dependencies — Hopper, Cutter and mitmproxy are casks, and IDA and JEB
-are not in Homebrew at all:
+formula dependencies — Hopper, Cutter, mitmproxy and android-platform-tools are
+casks, and IDA and JEB are not in Homebrew at all:
 
 ```bash
-brew install --cask hopper-disassembler cutter mitmproxy
+brew install --cask hopper-disassembler cutter mitmproxy android-platform-tools
 ```
+
+`android-platform-tools` is the one cask the launcher configures, because adb is
+what REA drives for Android devices. A formula cannot depend on a cask
+(Homebrew rejects `depends_on cask:`), so `REA_ADB_PATH` is set at launch rather
+than baked in: while the cask's `adb` is linked into `$(brew --prefix)/bin` the
+launcher points REA at it, and while it is not, the setting stays unset and REA
+keeps looking for `adb` on `PATH`. REA prefers an absolute `REA_ADB_PATH` over
+`PATH`, which is why the launcher checks that the file exists instead of
+assuming an installed cask — installing or uninstalling the cask later therefore
+never needs a reinstall of the formula.
 
 WABT wants an absolute directory rather than a `PATH` entry, which the launcher
 sets; export it only to override it:
@@ -994,6 +1005,31 @@ when REA verifies a new Ghidra release (and GhidraMCP ships an extension for
 it), which is a hand change; `scripts/bump/rea.py` fails rather than publishing
 a tap whose REA and Ghidra pins disagree.
 
+### zed-remote-server
+
+The headless half of [Zed](https://zed.dev)'s remote development: the editor
+runs this binary on the remote host (over SSH or in a dev container) to serve
+file access, terminals, tasks, language servers and the debugger, while the UI
+keeps running locally. The formula installs the prebuilt binary upstream
+attaches to each Zed release instead of building Zed's workspace:
+
+```bash
+brew install fmu/tap/zed-remote-server
+zed-remote-server version
+```
+
+Zed does not need this keg for remote development. It provisions its own copy
+per host, looks for a matching `~/.zed_server/zed-remote-server-<version>` on
+the host, and downloads one (from zed.dev, or from your laptop when
+`upload_binary_over_ssh` is set) when the version you connect with has none. The
+keg is for provisioning a host ahead of time, for pinning a known server
+version, and for inspecting the release without a Zed client; the scheduled bump
+keeps it on the latest Zed release.
+
+One release publishes one remote-server binary per platform, so the formula
+covers macOS and Linux, on both arm64 and x86_64. Upstream also ships Windows
+builds; the tap is POSIX-only, so there is no formula for those.
+
 ## Casks
 
 None of these casks is in homebrew-cask. `baocut`, `iqualize` and
@@ -1165,6 +1201,7 @@ everything.
 | `mpv-app` | `mpv-player/mpv` | `v*` (stable) |
 | `multica-desktop` | `multica-ai/multica` | `v*` |
 | `pared` + `pared-app` | `4evy/pared` | no `v` prefix |
+| `zed-remote-server` | `zed-industries/zed` | `v*` (all four POSIX assets of the tag) |
 
 Two things are coupled rather than independent:
 

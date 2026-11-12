@@ -32,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, multica-desktop, ntfs-3g, pared, partclone, rea, safari-ext-dearrow, safari-ext-sponsorblock, sasquatch, serena, shurectl, skippy, solidcraft-cli, unblob, vectorcraft-cli or wordcraft-cli"
+        description: "Package to bump: all, baocut, designcraft-cli, figcraft-cli, gbrain, ghidra-mcp, iqualize, jadx-headless-mcp, kuna, mesh-llm, mornye, mpv-app, multica-desktop, ntfs-3g, pared, partclone, rea, safari-ext-dearrow, safari-ext-sponsorblock, sasquatch, serena, shurectl, skippy, solidcraft-cli, unblob, vectorcraft-cli, wordcraft-cli or zed-remote-server"
         required: false
         default: "all"
       tag:
@@ -237,6 +237,14 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 scripts/bump/partclone.py | tee -a "$RUNNER_TEMP/bumped.txt"
+
+      - name: Bump zed-remote-server
+        # One Zed release carries every platform's remote-server binary, so the
+        # script re-pins all four POSIX assets of a tag together.
+        if: github.event_name == 'schedule' || inputs.package == 'all' || inputs.package == 'zed-remote-server'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/bump/zed-remote-server.py | tee -a "$RUNNER_TEMP/bumped.txt"
 
       - name: Detect changes
         id: changes
