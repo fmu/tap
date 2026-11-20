@@ -16,8 +16,8 @@
 class MeshLlm < Formula
   desc "Distributed AI/LLM runtime that pools compute across machines"
   homepage "https://github.com/Mesh-LLM/mesh-llm"
-  url "https://github.com/Mesh-LLM/mesh-llm/releases/download/v0.79.0/mesh-llm-v0.79.0-aarch64-apple-darwin.tar.gz"
-  sha256 "9d0c8870b9b1fbd98eb9a6141d8f22e01da25907777c7177f64f07e51a4533bf"
+  url "https://github.com/Mesh-LLM/mesh-llm/releases/download/v0.80.0/mesh-llm-v0.80.0-aarch64-apple-darwin.tar.gz"
+  sha256 "2cb54cf7569e983149c08386fadf3be8e8420a7e9d43d3b8729fa21c6ad6fab9"
   license any_of: ["MIT", "Apache-2.0"]
 
   depends_on arch: :arm64

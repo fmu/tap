@@ -18,8 +18,8 @@
 class Shurectl < Formula
   desc "Terminal UI configurator for Shure USB audio interfaces and microphones"
   homepage "https://github.com/Humblemonk/shurectl"
-  url "https://github.com/Humblemonk/shurectl/releases/download/v2.17.0/shurectl-v2.17.0-universal-apple-darwin.tar.gz"
-  sha256 "afd17796c65d89d5f52bfbf2665a1ba8033253e59bf53f5d72389feb9fbf44d3"
+  url "https://github.com/Humblemonk/shurectl/releases/download/v2.18.1/shurectl-v2.18.1-universal-apple-darwin.tar.gz"
+  sha256 "496717e7fbf47ba901151ff50bf109f4e25c2484ac5be0e24d3407c6da875fea"
   license "GPL-3.0-only"
 
   livecheck do

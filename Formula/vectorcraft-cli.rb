@@ -18,8 +18,8 @@
 class VectorcraftCli < Formula
   desc "Headless VectorCraft engine to draw, edit and export vector artwork"
   homepage "https://getartcraft.com/apps/vectorcraft"
-  url "https://github.com/storytold/vectorcraft/releases/download/v0.24.0/vectorcraft-cli-0.24.0-macos-universal.zip"
-  sha256 "c94847b994b0d6d75bf1c948d8c1dd834c5383806066505f0ba055719107e296"
+  url "https://github.com/storytold/vectorcraft/releases/download/v0.24.1/vectorcraft-cli-0.24.1-macos-universal.zip"
+  sha256 "7f0c8261e5c831d9681e48272f9ba73bf8702dbf6ceb84f98177c7c007faddf2"
   license any_of: ["MIT", "Apache-2.0"]
 
   livecheck do
