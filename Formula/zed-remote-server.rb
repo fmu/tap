@@ -29,25 +29,25 @@ class ZedRemoteServer < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/zed-industries/zed/releases/download/v1.29.3/zed-remote-server-macos-aarch64.gz"
-      sha256 "f255e83510d8969f07215e88c3d40c1464844659c5cc84c04242b63698e02e57"
+      url "https://github.com/zed-industries/zed/releases/download/v1.30.2/zed-remote-server-macos-aarch64.gz"
+      sha256 "693539699141aed4ede31b60a65f593398dbcb6e7ebc3033c0cbe320826bd6ff"
     end
 
     on_intel do
-      url "https://github.com/zed-industries/zed/releases/download/v1.29.3/zed-remote-server-macos-x86_64.gz"
-      sha256 "7cb3dc1835090ff4f24e973a7353cca08c5d0bc7b54b6f54fcfae8cfa06aca40"
+      url "https://github.com/zed-industries/zed/releases/download/v1.30.2/zed-remote-server-macos-x86_64.gz"
+      sha256 "9f5074a5a3142a1fe89aa3298925ced4dc68c9426592694a76eae42352dbf2c0"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/zed-industries/zed/releases/download/v1.29.3/zed-remote-server-linux-aarch64.gz"
-      sha256 "e99ed3026cbb214565d59b1047ebbd90f600d5debf7b0a6a66406960ba7b0e54"
+      url "https://github.com/zed-industries/zed/releases/download/v1.30.2/zed-remote-server-linux-aarch64.gz"
+      sha256 "46b2bd1fe30743a9241a879ac4570b80fce1753210b53dc1c050b089bbf30547"
     end
 
     on_intel do
-      url "https://github.com/zed-industries/zed/releases/download/v1.29.3/zed-remote-server-linux-x86_64.gz"
-      sha256 "18b68ed5396fb05eb0b8df15c9bda465d54c43e8cb7e40e4b3f29b16fa3a44a1"
+      url "https://github.com/zed-industries/zed/releases/download/v1.30.2/zed-remote-server-linux-x86_64.gz"
+      sha256 "b755cd9c3a4354b66db77a3b5daa8b084965a3d3b391589f2737db2a68a1eadb"
     end
   end
 
