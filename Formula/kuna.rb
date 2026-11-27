@@ -16,25 +16,25 @@ class Kuna < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1007/kuna-v1.1007-macos-arm64.tar.gz"
-      sha256 "4cb6ab7d02f9e364c61776b752f0ec89e9ba9fb9b1a033dd2a9a396f74b45087"
+      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1008/kuna-v1.1008-macos-arm64.tar.gz"
+      sha256 "62113622a490024e92ee3cc50ab3d8c961e9c0c8fdf9b68ac65fdbc58a59f424"
     end
 
     on_intel do
-      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1007/kuna-v1.1007-macos-x86_64.tar.gz"
-      sha256 "8431860363f57a6ae6b492e9788c47b95b5d75efc9c667757e89150f853307eb"
+      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1008/kuna-v1.1008-macos-x86_64.tar.gz"
+      sha256 "7be9c80ea52428cd49f63daf3e2858729d204c279df4afafb55b5d82972b252a"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1007/kuna-v1.1007-linux-x86_64.tar.gz"
-      sha256 "45d99f4c2f7289c739cf14654d1266d9ce775bd109425531a3b418a1526fc0b0"
+      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1008/kuna-v1.1008-linux-x86_64.tar.gz"
+      sha256 "e34f0bb176e0cb228edf2ca1ca734b57334461148cc685fb66c66a8d92d597d5"
     end
 
     on_arm do
-      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1007/kuna-v1.1007-linux-arm64.tar.gz"
-      sha256 "e6a321a61105284bda8b1118307a9d6b301ce42b5bedf3d986aa73ea1c27e878"
+      url "https://github.com/Noelo-Lab/kuna/releases/download/v1.1008/kuna-v1.1008-linux-arm64.tar.gz"
+      sha256 "4cc560dc2fdcee654ca4709b44d1e44634f337ad3bd903763f5a64af5173b1a3"
     end
   end
 

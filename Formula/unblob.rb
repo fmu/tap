@@ -19,9 +19,9 @@ class Unblob < Formula
 
   desc "Extract files from any kind of container formats"
   homepage "https://unblob.org"
-  url "https://files.pythonhosted.org/packages/e7/bf/afe6d513884431111d808af37ee58be29251385d44466bfcf78b0d15bdfc/unblob-26.6.4-cp39-abi3-macosx_11_0_arm64.whl", using: :nounzip
-  version "26.6.4"
-  sha256 "a2276495ae5ec3ed760af85c4c486711998205bbff97b09bde970b3d007b1476"
+  url "https://files.pythonhosted.org/packages/04/c6/dddb91e11a75854d20643a0ad139ca6987f968f2f6ba2d6a8acb04a3fc44/unblob-26.11.26-cp311-abi3-macosx_11_0_arm64.whl", using: :nounzip
+  version "26.11.26"
+  sha256 "3c3d5dd0c3ce0a39e814924ade125f93a21e262a63a3dbf34d059f2a95160ed1"
   license "MIT"
 
   depends_on arch: :arm64
@@ -73,8 +73,8 @@ class Unblob < Formula
   end
 
   resource "click" do
-    url "https://files.pythonhosted.org/packages/58/50/6c0d534c5f134586a8e1ba4e330569e32f057e33372ae556463212fb4cd3/click-8.5.0-py3-none-any.whl"
-    sha256 "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360"
+    url "https://files.pythonhosted.org/packages/31/7d/164b7ffc8624fe9efb4221bf9af485d5c1e41b9ae118045d2b6dc5457d8b/click-8.5.1-py3-none-any.whl"
+    sha256 "8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37"
   end
 
   resource "cryptography" do
@@ -117,14 +117,19 @@ class Unblob < Formula
     sha256 "d5895100ddd2bc55cf85b0743c2c7797bd49fd0f2ff90bbdde6fb99a34cb586b"
   end
 
+  resource "lzfse" do
+    url "https://files.pythonhosted.org/packages/bf/82/60ff397d7c2e4aeb62569a15cb48372a3574b2b3c5ba386fe28bc09e2a08/lzfse-0.4.2.post1-cp314-cp314-macosx_11_0_arm64.whl"
+    sha256 "61373e20a84593da1b49fcabcb0b3c68a5846dabb2979a8f3774c526b300571b"
+  end
+
   resource "markdown" do
-    url "https://files.pythonhosted.org/packages/fe/66/bcab3b677b71ad286b4e607e3427499537c76e13ad2e22584ba7a7d9882c/markdown-3.11.2-py3-none-any.whl"
-    sha256 "f80390747a2a0ff2ba54da074ce4f862f72a6685f608cd2637b646a6d83993f5"
+    url "https://files.pythonhosted.org/packages/61/54/188fcc228c71a4ae33244008af08c2e7b1945b657390f56d82dfbe4059f0/markdown-3.11.4-py3-none-any.whl"
+    sha256 "2e30b19cead1968f391206e184ca67dfe6805c2eb8f383fb07b4dc90f8288075"
   end
 
   resource "markdown-it-py" do
-    url "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl"
-    sha256 "9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a"
+    url "https://files.pythonhosted.org/packages/c9/31/5f0ac2f1a1c67423c995c731a11cd4ad05d081a2be969d74f868bdb9cc70/markdown_it_py-4.3.0-py3-none-any.whl"
+    sha256 "7aa1511a46c39138de78d9eba92ce47e63124d8003fc98b3a351909e04239efa"
   end
 
   resource "mdurl" do
@@ -148,13 +153,13 @@ class Unblob < Formula
   end
 
   resource "pydantic" do
-    url "https://files.pythonhosted.org/packages/97/01/c71a71258b58659c72504e5fd65b451f6e36e34dc931d0b237ded213c814/pydantic-2.14.2-py3-none-any.whl"
-    sha256 "7efbf7507b937931cd32a5755acb00ea1cf5ccb1d4e8067a5850d5069e382118"
+    url "https://files.pythonhosted.org/packages/8a/8c/824a686c4ba815ddb0722f9e66272088bccd4e1ae1d2f7015375e4a4fc7f/pydantic-2.14.4-py3-none-any.whl"
+    sha256 "653a2ad9f6d8858529c77c72717d0ea991d6c6837fe683246b2f4b2bbfc3fadc"
   end
 
   resource "pydantic-core" do
-    url "https://files.pythonhosted.org/packages/db/68/315701095f25687938ab79d263a6d939337456c2840fe69038fd38000338/pydantic_core-2.50.2-cp314-cp314-macosx_11_0_arm64.whl"
-    sha256 "6ffb4dce3ecb2cd563aa30f9eb5088a1cf1f4f688b90cbb374fa96e49fc50b02"
+    url "https://files.pythonhosted.org/packages/5b/a6/5bc38ad74a5705bcfdf1fd4e2009a62638a45dc246e3b0fc8a86e8c9ff4b/pydantic_core-2.50.5-cp314-cp314-macosx_11_0_arm64.whl"
+    sha256 "e8fe516a4b3b06e4ff83b9adee4a786d28a617e5fb5fe90bda49fb6f52a5ac19"
   end
 
   resource "pyfatfs" do
@@ -168,8 +173,8 @@ class Unblob < Formula
   end
 
   resource "pymdown-extensions" do
-    url "https://files.pythonhosted.org/packages/8a/d0/758afe732c2da502c051b4d03ff88daa3c0fc1a1e671e6c5a6318177bab4/pymdown_extensions-12.3-py3-none-any.whl"
-    sha256 "345493a8e3497e24382902903a1c43a28e34a52f2b7571a1c9641429b820ca74"
+    url "https://files.pythonhosted.org/packages/d4/4d/bef5fe206736149372215c13663d95eb13a377dca8bf95d4043afe088322/pymdown_extensions-13.1.2-py3-none-any.whl"
+    sha256 "20eec6babdadcdb47b5a91b3e69ff9f846d506e887125dcb027518c47d412693"
   end
 
   resource "pyperscan" do
@@ -183,13 +188,8 @@ class Unblob < Formula
   end
 
   resource "pyyaml" do
-    url "https://files.pythonhosted.org/packages/bd/9c/4d95bb87eb2063d20db7b60faa3840c1b18025517ae857371c4dd55a6b3a/pyyaml-6.0.3-cp314-cp314-macosx_11_0_arm64.whl"
-    sha256 "34d5fcd24b8445fadc33f9cf348c1047101756fd760b4dacb5c3e99755703310"
-  end
-
-  resource "pyzstd" do
-    url "https://files.pythonhosted.org/packages/b9/92/e924ae7de1d3fdbfed9022e78085e5028d8b5c7bc6c98b2fbf8b4def5f98/pyzstd-0.20.0-py3-none-any.whl"
-    sha256 "9c6aff5aa9b12bb14d51f724915f176db9b187214d66d93d990c75ff054483c6"
+    url "https://files.pythonhosted.org/packages/71/40/de4380acb2bcc733f502a7c8562b08f741890741dcaa8a7f018c87acc060/pyyaml-6.0.4-cp314-cp314-macosx_11_0_arm64.whl"
+    sha256 "7335809813ec838d9cd334b1744cda33deb141c9ef23a9c0df371c37980d3851"
   end
 
   resource "rarfile" do
@@ -228,8 +228,8 @@ class Unblob < Formula
   end
 
   resource "typing-inspection" do
-    url "https://files.pythonhosted.org/packages/67/81/4add07e5172b7ac40d8ed5ff580409a7801a4fe26d529bdd915401dabfbe/typing_inspection-0.4.4-py3-none-any.whl"
-    sha256 "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147"
+    url "https://files.pythonhosted.org/packages/de/0c/ea2544850a7c135e15033a5c7a8e7211136184b7ae63e2239d557c2b3019/typing_inspection-0.4.5-py3-none-any.whl"
+    sha256 "bc210535442b39e1bf2805e0c7a17dfd6a4ace760c84c7f7d16245d23a6b1c39"
   end
 
   resource "ubi-reader" do
