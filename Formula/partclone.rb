@@ -19,8 +19,8 @@
 class Partclone < Formula
   desc "Utilities to back up and restore the used blocks of partitions"
   homepage "https://partclone.org/"
-  url "https://github.com/Thomas-Tsai/partclone/archive/refs/tags/0.3.54.tar.gz"
-  sha256 "7a09a4676327ecea284df2cf1c6a1fa36b11308659d58e32fec9a723e18e52ab"
+  url "https://github.com/Thomas-Tsai/partclone/archive/refs/tags/0.3.55.tar.gz"
+  sha256 "bbef594e5089c7a811da1a05f80fe0b6687c1f06d1f5a201c2fb9bdfd572f39c"
   license "GPL-2.0-or-later"
 
   livecheck do
