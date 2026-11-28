@@ -9,13 +9,13 @@ class Gbrain < Formula
   if OS.mac?
     depends_on arch: :arm64
 
-    url "https://github.com/garrytan/gbrain/releases/download/v0.60.778.0/gbrain-darwin-arm64"
-    sha256 "88af2ae6683dda6ec24aad608e59f50c42f844af460c69ea17b634dab366bc0b"
+    url "https://github.com/garrytan/gbrain/releases/download/v0.60.781.0/gbrain-darwin-arm64"
+    sha256 "7afe824c93c54997a371e2797bd8115ddf2b4cc357a959855fb0f2cb342c7a31"
   else
     depends_on arch: :x86_64
 
-    url "https://github.com/garrytan/gbrain/releases/download/v0.60.778.0/gbrain-linux-x64"
-    sha256 "b4f853ef4f74da90ee12858ea08e2512c6a2b5064b23835f82979667c5fe7bbb"
+    url "https://github.com/garrytan/gbrain/releases/download/v0.60.781.0/gbrain-linux-x64"
+    sha256 "850a9fd36382e18a8f6ea66218d47bd387198a6694704d0b0b2669c0649b5459"
   end
 
   livecheck do

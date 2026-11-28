@@ -20,8 +20,8 @@
 class SolidcraftCli < Formula
   desc "Headless SolidCraft engine to model, evaluate and export parametric 3D CAD"
   homepage "https://solidcraft.io/"
-  url "https://github.com/tangency-labs/solidcraft/releases/download/v0.51.1/solidcraft-cli-0.51.1-macos-universal.zip"
-  sha256 "ee698e2060aa60e2b1112edd806301d4d4f640634e48b37e2cc7b791d0c0f172"
+  url "https://github.com/tangency-labs/solidcraft/releases/download/v0.51.2/solidcraft-cli-0.51.2-macos-universal.zip"
+  sha256 "614c7699779ec0cebde74b62bb601cab3b8b194d6a944b3a9efd441213161da2"
   license any_of: ["MIT", "Apache-2.0"]
 
   livecheck do
